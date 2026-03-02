@@ -25,6 +25,7 @@ import {
   TableSettings24Regular,
   Lightbulb24Regular,
   Pause24Regular,
+  
 } from '@fluentui/react-icons';
 import { SegmentCycle, RecurrencePattern, SegmentDetail } from '@/types/segment';
 import { segmentService } from '@/services/segmentService';
