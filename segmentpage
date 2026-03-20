@@ -65,6 +65,7 @@ const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({
 const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 const [availableColumns, setAvailableColumns] = useState<string[]>([]);
 const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+const [tempSelectedColumns, setTempSelectedColumns] = useState<string[]>([]);
   // Fetch segments from API
   const fetchSegments = useCallback(async () => {
     setLoading(true);
@@ -106,7 +107,7 @@ useEffect(() => {
   }
 }, [segments]);
 useEffect(() => {
-  setSelectedColumns(["state", "cycle"]);
+  setSelectedColumns(["state", "cycle", "createdBy"]);
 }, []);
 //changes
   const EXCLUDED_COLUMNS = ["name", "description", "id"];
@@ -247,7 +248,10 @@ const filteredSegments = segments.filter((row) => {
       <Button
           appearance="secondary"
           icon={<Add24Regular />}
-           onClick={() => setIsFilterPanelOpen(true)}
+           onClick={() => {
+  setTempSelectedColumns(selectedColumns);
+  setIsFilterPanelOpen(true);
+}}
 
         >
           Add Filter
@@ -518,22 +522,16 @@ const filteredSegments = segments.filter((row) => {
         <div key={col}>
           <input
             type="checkbox"
-            checked={selectedColumns.includes(col)}
+            checked={tempSelectedColumns.includes(col)}
   onChange={(e) => {
   if (e.target.checked) {
-    setSelectedColumns((prev) =>
+    setTempSelectedColumns((prev) =>
       prev.includes(col) ? prev : [...prev, col]
     );
   } else {
-    setSelectedColumns((prev) =>
+    setTempSelectedColumns((prev) =>
       prev.filter((c) => c !== col)
     );
-
-    setSelectedFilters((prev) => {
-      const updated = { ...prev };
-      delete updated[col];
-      return updated;
-    });
   }
 }}
           />
@@ -542,10 +540,26 @@ const filteredSegments = segments.filter((row) => {
       ))}
 
       <div style={{ marginTop: "10px" }}>
-        <Button onClick={() => setIsFilterPanelOpen(false)}>
-          Apply
-        </Button>
+<Button
+  onClick={() => {
+    setSelectedColumns(tempSelectedColumns);
 
+    // remove filters that are no longer selected
+    setSelectedFilters((prev) => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach((key) => {
+        if (!tempSelectedColumns.includes(key)) {
+          delete updated[key];
+        }
+      });
+      return updated;
+    });
+
+    setIsFilterPanelOpen(false);
+  }}
+>
+  Apply
+</Button>
         <Button onClick={() => setIsFilterPanelOpen(false)}>
           Cancel
         </Button>
