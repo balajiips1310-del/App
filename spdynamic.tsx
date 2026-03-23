@@ -1,26 +1,77 @@
-.segments-table td {
-  padding: 12px 16px;
+
+.segments-table {
+  width: 100%;
+  min-width: 1400px;              /* ensures horizontal scroll */
+  table-layout: fixed;            /* prevents column collapsing */
+  border-collapse: separate;
 }
+
 
 .segments-table th {
   padding: 12px 16px;
   background-color: #fafafa;
   font-weight: 600;
+  text-align: left;
+
+  white-space: nowrap;            /* prevent wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  min-width: 180px;               /* FIX: prevent merging */
 }
+
+
+.segments-table td {
+  padding: 12px 16px;
+  text-align: left;
+
+  white-space: nowrap;            /* FIX: no wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  min-width: 180px;               /* FIX: column width */
+}
+
+
+.segments-table-container {
+  overflow-x: auto;               /* horizontal scroll */
+  width: 100%;
+}
+
 
 .segment-name-cell {
   color: #0f6cbd;
   cursor: pointer;
+  font-weight: 500;
 }
+
+.segment-name-cell:hover {
+  text-decoration: underline;
+}
+
 
 .sortable-header {
   display: flex;
   align-items: center;
   gap: 6px;
+  cursor: pointer;
 }
-------------------------------------
 
-import React, { useState, useEffect, useCallback } from 'react';
+
+.status-badge,
+.cycle-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+
+.segments-table tbody tr:hover {
+  background-color: #f5f5f5;
+}
+---------------------------------------
+
+  import React, { useState, useEffect, useCallback } from 'react';
 import { Filter24Regular, Dismiss24Regular } from "@fluentui/react-icons";
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '@/contexts/ChatContext';
@@ -364,7 +415,7 @@ const filteredSegments = segments.filter((row) => {
           <Option value="Adhoc">Adhoc</Option>
           <Option value="Recurring">Recurring</Option>
         </Dropdown> */}
-   {selectedColumns.map((column) => (
+   {Object.keys(dynamicFilters).map((column) => (
   <Dropdown
     key={column}
     className="segments-filter-dropdown"
@@ -389,7 +440,7 @@ const filteredSegments = segments.filter((row) => {
 ))}
       </div>
 
-      <Card className="segments-table-container" style={{ overflowX: 'auto' }}>
+      <Card className="segments-table-container" style={{ overflowX: 'auto',width: "100%" }}>
         {loading ? (
           <div className="loading-state">
             <Spinner size="large" label="Loading segments..." />
@@ -403,7 +454,7 @@ const filteredSegments = segments.filter((row) => {
           </div>
         ) : sortedSegments.length > 0 ? (
           <>
-            <Table className="segments-table" aria-label="Segments list" style={{ minWidth: "1200px" }}>
+            <Table className="segments-table" aria-label="Segments list" style={{    minWidth: "1400px",    tableLayout: "fixed"  }}>
               {/* <TableHeader>
                 <TableRow>
                   <TableHeaderCell>
@@ -457,7 +508,7 @@ const filteredSegments = segments.filter((row) => {
       ? selectedColumns
       : Object.keys(segments[0] || {}).filter((k) => k !== "id")
     ).map((key) => (
-      <TableHeaderCell key={key}>
+      <TableHeaderCell  key={key}  style={{    minWidth: "180px",    whiteSpace: "nowrap"  }}>
         <span
           className="sortable-header"
           onClick={() => handleSort(key)}
@@ -488,8 +539,8 @@ const filteredSegments = segments.filter((row) => {
         : Object.keys(segment).filter((k) => k !== "id")
       ).map((key) => (
         <TableCell key={key}>
-         <TableCellLayout style={{ minWidth: "150px" }}>
-  {key === "name" ? (
+<TableCellLayout  style={{    minWidth: "180px",    whiteSpace: "nowrap",    overflow: "hidden",    textOverflow: "ellipsis"  }}>
+    {key === "name" ? (
     <span
       className="segment-name-cell"
       onClick={() => handleSegmentClick(segment.id)}
