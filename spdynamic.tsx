@@ -1,3 +1,25 @@
+.segments-table td {
+  padding: 12px 16px;
+}
+
+.segments-table th {
+  padding: 12px 16px;
+  background-color: #fafafa;
+  font-weight: 600;
+}
+
+.segment-name-cell {
+  color: #0f6cbd;
+  cursor: pointer;
+}
+
+.sortable-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+------------------------------------
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Filter24Regular, Dismiss24Regular } from "@fluentui/react-icons";
 import { useNavigate } from 'react-router-dom';
