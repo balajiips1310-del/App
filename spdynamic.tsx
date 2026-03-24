@@ -430,7 +430,9 @@ const columnsToRender =
           </div>
         ) : sortedSegments.length > 0 ? (
           <>
-            <Table className="segments-table" aria-label="Segments list" style={{    minWidth: "1400px",    tableLayout: "fixed"  }}>
+            <Table className="segments-table" aria-label="Segments list" style={{
+  minWidth: `${columnsToRender.length * 180}px`
+}}>
               {/* <TableHeader>
                 <TableRow>
                   <TableHeaderCell>
@@ -509,7 +511,7 @@ const columnsToRender =
     <TableRow key={segment.id}>
       {columnsToRender.map((key) => (
         <TableCell key={key}>
-<TableCellLayout  style={{    minWidth: "180px",    whiteSpace: "nowrap",    overflow: "hidden",    textOverflow: "ellipsis"  }}>
+<TableCellLayout  style={{    minWidth: "180px",    whiteSpace: "nowrap",  textOverflow: "ellipsis"  }}>
     {key === "name" ? (
     <span
       className="segment-name-cell"
