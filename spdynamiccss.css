@@ -191,3 +191,11 @@
     align-items: flex-start;
   }
 }
+.segments-table th {
+  font-size: 14px;   /* slightly bigger header */
+}
+
+.segments-table td {
+  font-size: 14px;   /* body text */
+}
+
