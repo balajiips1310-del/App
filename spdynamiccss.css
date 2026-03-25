@@ -46,12 +46,20 @@
   min-height: 0; /* Important for proper scrolling */
 }
 
-.segments-table th,
+
+.segments-table th {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+
 .segments-table td {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .segments-table {
   table-layout: auto;
   width: 100%;
