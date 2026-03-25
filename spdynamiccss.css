@@ -55,7 +55,7 @@
 }
 .segments-table {
   table-layout: auto;
-  width: max-content;
+  width: 100%;
 }
 /* Status and Cycle badges */
 .status-badge,
