@@ -431,7 +431,7 @@ const columnsToRender =
         ) : sortedSegments.length > 0 ? (
           <>
             <Table className="segments-table" aria-label="Segments list" style={{
-  minWidth: `${columnsToRender.length * 180}px`
+      tableLayout: "auto"
 }}>
               {/* <TableHeader>
                 <TableRow>
@@ -483,7 +483,15 @@ const columnsToRender =
               <TableHeader>
   <TableRow>
     {columnsToRender.map((key) => (
-      <TableHeaderCell  key={key}  style={{    minWidth: "180px",    whiteSpace: "nowrap"  }}>
+      <TableHeaderCell
+  key={key}
+  style={{
+    maxWidth: "180px",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis"
+  }}
+>
         <span
           className="sortable-header"
           onClick={() => handleSort(key)}
@@ -511,7 +519,16 @@ const columnsToRender =
     <TableRow key={segment.id}>
       {columnsToRender.map((key) => (
         <TableCell key={key}>
-<TableCellLayout  style={{    minWidth: "180px",    whiteSpace: "nowrap",  textOverflow: "ellipsis"  }}>
+<TableCellLayout
+  style={{
+    maxWidth: "180px",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    whiteSpace: "nowrap",
+    textOverflow: "ellipsis"
+  }}
+>
+ 
     {key === "name" ? (
     <span
       className="segment-name-cell"
@@ -538,7 +555,17 @@ const columnsToRender =
   ) : key.toLowerCase().includes("date") ? (
     formatDate((segment as any)[key])
   ) : (
-    (segment as any)[key]?.toString() || "-"
+    <span
+  style={{
+    display: "inline-block",
+    maxWidth: "180px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap"
+  }}
+>
+  {(segment as any)[key]?.toString() || "-"}
+</span>
   )}
 </TableCellLayout>
         </TableCell>
