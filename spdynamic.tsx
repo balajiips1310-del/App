@@ -77,6 +77,10 @@ const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
 const [tempSelectedColumns, setTempSelectedColumns] = useState<string[]>([]);
 const [tempSelectedFilters, setTempSelectedFilters] = useState<string[]>([]);
 const [filterSearchQuery, setFilterSearchQuery] = useState("");
+const [dateRange, setDateRange] = useState({
+  from: "",
+  to: ""
+});
 
   // Fetch segments from API
   const fetchSegments = useCallback(async () => {
@@ -166,7 +170,6 @@ const generateDynamicFilters = (data: any[]) => {
   return filters;
 };
 //-----
-
 const filteredSegments = segments.filter((row) => {
   return Object.keys(selectedFilters).every((col) => {
     const filterValue = selectedFilters[col];
@@ -174,7 +177,7 @@ const filteredSegments = segments.filter((row) => {
 
     const cellValue = row[col];
 
-    // ✅ DATE FIX (timezone safe)
+    // ✅ DATE EQUALITY (for other date filters)
     if (col.toLowerCase().includes("date")) {
       const cellDate = new Date(cellValue);
       const filterDate = new Date(filterValue);
@@ -188,6 +191,28 @@ const filteredSegments = segments.filter((row) => {
 
     return cellValue === filterValue;
   });
+})
+.filter((row) => {
+  if (!dateRange.from && !dateRange.to) return true;
+
+  const rowDate = new Date(row.startDate);
+  rowDate.setHours(0, 0, 0, 0);
+
+  if (dateRange.from) {
+    const fromDate = new Date(dateRange.from);
+    fromDate.setHours(0, 0, 0, 0);
+
+    if (rowDate < fromDate) return false;
+  }
+
+  if (dateRange.to) {
+    const toDate = new Date(dateRange.to);
+    toDate.setHours(23, 59, 59, 999);
+
+    if (rowDate > toDate) return false;
+  }
+
+  return true; // ✅ THIS WAS MISSING
 });
 const allColumns = React.useMemo(() => {
   if (!segments || segments.length === 0) return [];
@@ -380,6 +405,29 @@ const columnsToRender =
             setCurrentPage(1);
           }}
         />
+        {/* ✅ Date Range Filter */}
+<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+  
+  <Input
+    type="date"
+    placeholder="Start Date"
+    value={dateRange.from}
+    onChange={(_, data) =>
+      setDateRange((prev) => ({ ...prev, from: data.value }))
+    }
+  />
+
+  <span>to</span>
+
+  <Input
+    type="date"
+    placeholder="End Date"
+    value={dateRange.to}
+    onChange={(_, data) =>
+      setDateRange((prev) => ({ ...prev, to: data.value }))
+    }
+  />
+</div>
 
         {/* <Dropdown
           className="segments-filter-dropdown"
@@ -411,7 +459,11 @@ const columnsToRender =
           <Option value="Recurring">Recurring</Option>
         </Dropdown> */}
   {Object.keys(dynamicFilters)
-  .filter((column) => selectedFilters.hasOwnProperty(column))
+.filter((column) =>
+  selectedFilters.hasOwnProperty(column) &&
+  column !== "startDate" &&
+  column !== "endDate"
+)
   .map((column) => {
 
 if (column.toLowerCase().includes("time")) {
@@ -447,22 +499,7 @@ if (column.toLowerCase().includes("date")) {
     />
   );
 }
-    if (isDateField) {
-      return (
-        <Input
-          key={column}
-          type="date"
-          className="segments-filter-dropdown"
-          value={selectedFilters[column] || ""}
-          onChange={(_, data) => {
-            setSelectedFilters((prev) => ({
-              ...prev,
-              [column]: data.value,
-            }));
-          }}
-        />
-      );
-    }
+    
 
     return (
       <Dropdown
@@ -486,7 +523,8 @@ if (column.toLowerCase().includes("date")) {
         ))}
       </Dropdown>
     );
-  })}    </div>
+  })} 
+     </div>
 
       <Card className="segments-table-container" style={{ overflowX: 'auto',width: "100%" }}>
         {loading ? (
