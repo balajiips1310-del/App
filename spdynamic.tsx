@@ -428,33 +428,31 @@ const columnsToRender =
 <div className="segments-filters">
   
   <Tooltip content="Edit Columns" relationship="label">
-  <Button
-    appearance="subtle"
-    icon={<Add24Regular />}
-    onClick={() => {
-      setFilterSearchQuery("");
-      setTempSelectedFilters(Object.keys(selectedFilters));
-      setIsFilterPanelOpen(true);
-    }}
-  />
-    
+ <Button
+  appearance="subtle"
+  icon={< Add24Regular />}
+  onClick={() => {
+    setFilterSearchQuery("");
+    setTempSelectedColumns(
+      selectedColumns.length ? selectedColumns : availableColumns
+    );
+    setIsColumnPanelOpen(true);
+  }}
+/>   
   
     </Tooltip>
     
 
   <Tooltip content="Add Filters" relationship="label">
   <Button
-    appearance="subtle"
-    icon={<Filter24Regular />}
-    onClick={() => {
-      setFilterSearchQuery("");
-      setTempSelectedColumns(
-        selectedColumns.length ? selectedColumns : availableColumns
-      );
-      setIsColumnPanelOpen(true);
-    }}
-  />
-    
+  appearance="subtle"
+  icon={<Filter24Regular />}
+  onClick={() => {
+    setFilterSearchQuery("");
+    setTempSelectedFilters(Object.keys(selectedFilters));
+    setIsFilterPanelOpen(true);
+  }}
+/>  
 </Tooltip>
 
   <Input
