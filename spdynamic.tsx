@@ -230,7 +230,8 @@ if (isDateTimeColumn(col)) {
 .filter((row) => {
   if (!dateRange.from && !dateRange.to) return true;
 
-  const rowDate = new Date(row.startDate);
+  const rowDate = new Date(row.startDate || row.endDate);
+if (isNaN(rowDate.getTime())) return false;
   rowDate.setHours(0, 0, 0, 0);
 
   if (dateRange.from) {
@@ -471,7 +472,7 @@ const columnsToRender =
 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
 
   {/* DATE CHIP */}
-  {(dateRange.from || dateRange.to) && (
+  {(tempSelectedFilters.includes("dateRange") || dateRange.from || dateRange.to) && (
     <Popover>
       <PopoverTrigger disableButtonEnhancement>
         <Button
@@ -514,7 +515,7 @@ const columnsToRender =
           }
         />
 
-        <Button
+        {/* <Button
           appearance="primary"
           style={{ marginTop: "10px", width: "100%" }}
           onClick={() => {
@@ -522,7 +523,7 @@ const columnsToRender =
           }}
         >
           Apply
-        </Button>
+        </Button> */}
       </PopoverSurface>
     </Popover>
   )}
@@ -975,6 +976,10 @@ const columnsToRender =
   });
 
   setSelectedFilters(updated);
+  // ✅ handle dateRange selection
+if (tempSelectedFilters.includes("dateRange")) {
+  localStorage.setItem("dateRange", JSON.stringify(dateRange));
+}
 
   localStorage.setItem("selectedFilters", JSON.stringify(updated));
 
