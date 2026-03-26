@@ -23,7 +23,7 @@ import {
   DrawerBody,
   DrawerFooter,
 } from '@fluentui/react-components';
-import { DatePicker } from "@fluentui/react-datepicker-compat";
+
 import {
   Popover,
   PopoverTrigger,
@@ -536,17 +536,17 @@ const columnsToRender =
           <Text weight="semibold">Filter by {col}</Text>
 {/* ✅ DATE FILTER */}
 {isDateColumn(col) && (
-  <DatePicker
-    value={value ? new Date(value) : undefined}
-    onSelectDate={(date) => {
+  <Input
+    type="date"
+    value={value || ""}
+    onChange={(_, d) => {
       setSelectedFilters((prev) => ({
         ...prev,
-        [col]: date ? date.toISOString().split("T")[0] : "",
+        [col]: d.value,
       }));
     }}
   />
 )}
-
 {/* ✅ DATETIME FILTER */}
 {isDateTimeColumn(col) && (
   <Input
