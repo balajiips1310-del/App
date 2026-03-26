@@ -362,7 +362,7 @@ const columnsToRender =
   const handleSegmentClick = (segmentId: string) => {
     navigate(`/segments/${segmentId}`);
   };
-
+  console.log("dynamicFilters:", dynamicFilters);
   return (
     <div className="segments-page">
     <div className="segments-page-header">
@@ -889,13 +889,23 @@ const columnsToRender =
   const updated: Record<string, string> = {};
 
   tempSelectedFilters.forEach((key) => {
-    // ✅ assign FIRST AVAILABLE VALUE
-    const firstValue = dynamicFilters[key]?.[0];
+    let value = selectedFilters[key];
 
-    if (firstValue) {
-      updated[key] = firstValue;
+    // ✅ if no existing value, fallback
+    if (!value) {
+      const options = dynamicFilters[key];
+
+      if (options && options.length > 0) {
+        value = options[0];
+      } else {
+        value = "All"; // ✅ fallback fallback
+      }
     }
+
+    updated[key] = value;
   });
+
+  console.log("FINAL UPDATED:", updated); // 🔍 debug
 
   setSelectedFilters(updated);
 
