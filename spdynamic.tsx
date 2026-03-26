@@ -23,6 +23,11 @@ import {
   DrawerBody,
   DrawerFooter,
 } from '@fluentui/react-components';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverSurface,
+} from "@fluentui/react-components";
 
 import {
   Search24Regular,
@@ -371,34 +376,30 @@ const columnsToRender =
   </Text>
 
   <div className="segments-header-actions">
-    {/* ✅ Add Columns */}
-{/* ✅ Add Columns */}
+  
+
 <Button
-  appearance="primary"
+  appearance="subtle"
   icon={<Filter24Regular />}
   onClick={() => {
-  setFilterSearchQuery(""); // ✅ ADD THIS
-  setTempSelectedColumns(
-    selectedColumns.length ? selectedColumns : availableColumns
-  );
-  setIsColumnPanelOpen(true);
-}}
->
-  Add Columns
-</Button>
+    setFilterSearchQuery("");
+    setTempSelectedColumns(
+      selectedColumns.length ? selectedColumns : availableColumns
+    );
+    setIsColumnPanelOpen(true);
+  }}
+/>
 
-{/* ✅ Add Filter */}
 <Button
-  appearance="primary"
+  appearance="subtle"
   icon={<Add24Regular />}
   onClick={() => {
-  setFilterSearchQuery(""); // ✅ ADD THIS
-  setTempSelectedFilters(Object.keys(selectedFilters));
-  setIsFilterPanelOpen(true);
-}}
->
-  Add Filter
-</Button>    <Button
+    setFilterSearchQuery("");
+    setTempSelectedFilters(Object.keys(selectedFilters));
+    setIsFilterPanelOpen(true);
+  }}
+/>
+   <Button
       appearance="primary"
       icon={<Add24Regular />}
       onClick={() => {
@@ -410,143 +411,147 @@ const columnsToRender =
     </Button>
   </div>
 </div>
-
-      <div className="segments-filters">
-        <Input
-          className="segments-search"
-          placeholder="Search by name or description..."
-          contentBefore={<Search24Regular />}
-          value={searchQuery}
-          onChange={(_, data) => {
-            setSearchQuery(data.value);
-            setCurrentPage(1);
-          }}
-        />
-        {/* ✅ Date Range Filter */}
-<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-  
+<div className="segments-filters">
   <Input
-    type="date"
-    placeholder="Start Date"
-    value={dateRange.from}
-      onChange={(_, data) => {
-  const updated = { ...dateRange, from: data.value };
-  setDateRange(updated);
-  localStorage.setItem("dateRange", JSON.stringify(updated));
-}}
-  />
-
-  <span>to</span>
-
-  <Input
-    type="date"
-    placeholder="End Date"
-    value={dateRange.to}
+    className="segments-search"
+    placeholder="Search by name or description..."
+    contentBefore={<Search24Regular />}
+    value={searchQuery}
     onChange={(_, data) => {
-  const updated = { ...dateRange, to: data.value };
-  setDateRange(updated);
-  localStorage.setItem("dateRange", JSON.stringify(updated));
-}}
+      setSearchQuery(data.value);
+      setCurrentPage(1);
+    }}
   />
 </div>
 
-        {/* <Dropdown
-          className="segments-filter-dropdown"
-          placeholder="State"
-          value={stateFilter}
-          onOptionSelect={(_, data) => {
-            setStateFilter((data.optionValue as SegmentState | 'All') || 'All');
-            setCurrentPage(1);
+     {/* ✅ FILTER CHIPS UI */}
+<div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
+
+  {/* DATE CHIP */}
+  {(dateRange.from || dateRange.to) && (
+    <Popover>
+      <PopoverTrigger disableButtonEnhancement>
+        <Button
+  appearance="outline"
+  onClick={(e) => e.stopPropagation()}
+>
+  Date | {dateRange.from || "?"} → {dateRange.to || "?"}
+
+  <span
+    style={{ marginLeft: "6px", cursor: "pointer" }}
+    onClick={(e) => {
+      e.stopPropagation();
+      const cleared = { from: "", to: "" };
+      setDateRange(cleared);
+      localStorage.setItem("dateRange", JSON.stringify(cleared));
+    }}
+  >
+    ✕
+  </span>
+</Button>
+      </PopoverTrigger>
+
+      <PopoverSurface style={{ padding: "12px", width: "220px" }}>
+        <Text weight="semibold">Filter by Date</Text>
+
+        <Input
+          type="date"
+          value={dateRange.from}
+          onChange={(_, d) =>
+            setDateRange((prev) => ({ ...prev, from: d.value }))
+          }
+        />
+
+        <Input
+          type="date"
+          value={dateRange.to}
+          style={{ marginTop: "8px" }}
+          onChange={(_, d) =>
+            setDateRange((prev) => ({ ...prev, to: d.value }))
+          }
+        />
+
+        <Button
+          appearance="primary"
+          style={{ marginTop: "10px", width: "100%" }}
+          onClick={() => {
+            localStorage.setItem("dateRange", JSON.stringify(dateRange));
           }}
         >
-          <Option value="All">All States</Option>
-          <Option value="Active">Active</Option>
-          <Option value="Paused">Paused</Option>
-          <Option value="Draft">Draft</Option>
-          <Option value="Completed">Completed</Option>
-        </Dropdown>
+          Apply
+        </Button>
+      </PopoverSurface>
+    </Popover>
+  )}
 
-        <Dropdown
-          className="segments-filter-dropdown"
-          placeholder="Cycle"
-          value={cycleFilter}
-          onOptionSelect={(_, data) => {
-            setCycleFilter((data.optionValue as SegmentCycle | 'All') || 'All');
-            setCurrentPage(1);
-          }}
-        >
-          <Option value="All">All Cycles</Option>
-          <Option value="Adhoc">Adhoc</Option>
-          <Option value="Recurring">Recurring</Option>
-        </Dropdown> */}
-  {Object.keys(dynamicFilters)
-.filter((column) =>
-  selectedFilters.hasOwnProperty(column) &&
-  column !== "startDate" &&
-  column !== "endDate"
-)
-  .map((column) => {
-
-if (column.toLowerCase().includes("time")) {
-  return (
-    <Input
-      key={column}
-      type="datetime-local"   // ✅ IMPORTANT
-      className="segments-filter-dropdown"
-      value={selectedFilters[column] || ""}
-      onChange={(_, data) => {
-        setSelectedFilters((prev) => ({
-          ...prev,
-          [column]: data.value,
-        }));
-      }}
-    />
-  );
-}
-
-if (column.toLowerCase().includes("date")) {
-  return (
-    <Input
-      key={column}
-      type="date"
-      className="segments-filter-dropdown"
-      value={selectedFilters[column] || ""}
-      onChange={(_, data) => {
-        setSelectedFilters((prev) => ({
-          ...prev,
-          [column]: data.value,
-        }));
-      }}
-    />
-  );
-}
-    
+  {/* OTHER FILTER CHIPS */}
+  {Object.keys(selectedFilters).map((col) => {
+    const value = selectedFilters[col];
+    if (!value) return null;
 
     return (
-      <Dropdown
-        key={column}
-        className="segments-filter-dropdown"
-        placeholder={column}
-        value={selectedFilters[column] || ""}
-        onOptionSelect={(_, data) => {
-          setSelectedFilters((prev) => ({
-            ...prev,
-            [column]: data.optionValue || "",
-          }));
-        }}
-      >
-        <Option value="">All</Option>
+      <Popover key={col}>
+        <PopoverTrigger disableButtonEnhancement>
+        <Button
+  appearance="outline"
+  onClick={(e) => e.stopPropagation()}
+>
+  {col} | {value}
 
-        {dynamicFilters[column]?.map((val, idx) => (
-          <Option key={idx} value={val}>
-            {val}
-          </Option>
-        ))}
-      </Dropdown>
+  <span
+    style={{ marginLeft: "6px", cursor: "pointer" }}
+    onClick={(e) => {
+      e.stopPropagation();
+      setSelectedFilters((prev) => {
+        const updated = { ...prev };
+        delete updated[col];
+        localStorage.setItem("selectedFilters", JSON.stringify(updated));
+        return updated;
+      });
+    }}
+  >
+    ✕
+  </span>
+</Button>
+        </PopoverTrigger>
+
+        <PopoverSurface style={{ padding: "12px", width: "220px" }}>
+          <Text weight="semibold">Filter by {col}</Text>
+
+          {dynamicFilters[col]?.map((val) => (
+            <div key={val} style={{ marginTop: "6px" }}>
+              <input
+                type="radio"
+                checked={value === val}
+                onChange={() => {
+                  setSelectedFilters((prev) => ({
+                    ...prev,
+                    [col]: val,
+                  }));
+                }}
+              />
+              <span style={{ marginLeft: "6px" }}>{val}</span>
+            </div>
+          ))}
+
+          <Button
+            appearance="primary"
+            style={{ marginTop: "10px", width: "100%" }}
+            onClick={() => {
+              localStorage.setItem(
+                "selectedFilters",
+                JSON.stringify(selectedFilters)
+              );
+            }}
+          >
+            Apply
+          </Button>
+        </PopoverSurface>
+      </Popover>
     );
-  })} 
-     </div>
+  })}
 
+</div>
       <Card className="segments-table-container" style={{ overflowX: 'auto',width: "100%" }}>
         {loading ? (
           <div className="loading-state">
