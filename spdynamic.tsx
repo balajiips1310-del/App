@@ -23,7 +23,7 @@ import {
   DrawerBody,
   DrawerFooter,
 } from '@fluentui/react-components';
-import { DatePicker } from "@fluentui/react-datepicker-compat";
+
 import {
   Popover,
   PopoverTrigger,
