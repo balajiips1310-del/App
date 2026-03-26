@@ -178,7 +178,7 @@ useEffect(() => {
   }
 }, [availableColumns]);
 //changes
-  const EXCLUDED_COLUMNS = ["name", "description", "id", "isRunning"];
+  const EXCLUDED_COLUMNS = ["name", "description", "id", "isRunning", "startDate", "endDate" ];
 
 const getFilterableColumns = (data: any[]) => {
   if (!data || data.length === 0) return [];
@@ -478,7 +478,7 @@ const columnsToRender =
   appearance="outline"
   // onClick={(e) => e.stopPropagation()}
 >
-  Date | {dateRange.from || "?"} → {dateRange.to || "?"}
+  Schedule Range | {dateRange.from || "?"} → {dateRange.to || "?"}
 
   <span
     style={{ marginLeft: "6px", cursor: "pointer" }}
@@ -909,7 +909,11 @@ const columnsToRender =
 />
 
     {/* ✅ Filter list */}
-    {Object.keys(dynamicFilters)
+    {[
+  ...Object.keys(dynamicFilters)
+    .filter((col) => col !== "startDate" && col !== "endDate"),
+  "dateRange" 
+]
       .filter((col) =>
         col.toLowerCase().includes(filterSearchQuery.toLowerCase())
       )
@@ -942,9 +946,11 @@ const columnsToRender =
   }
 }}
           />
-          <Text size ={400}>
-            {col.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase())}
-          </Text>
+<Text size={400}>
+  {col === "dateRange"
+    ? "Schedule Range"
+    : col.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase())}
+</Text>
         </div>
       ))}
   </DrawerBody>
