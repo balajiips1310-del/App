@@ -23,7 +23,6 @@ import {
   DrawerBody,
   DrawerFooter,
 } from '@fluentui/react-components';
-
 import {
   Popover,
   PopoverTrigger,
