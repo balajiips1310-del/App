@@ -889,7 +889,7 @@ const columnsToRender =
   const updated: Record<string, string> = {};
 
   tempSelectedFilters.forEach((key) => {
-    updated[key] = selectedFilters[key] || "";
+    updated[key] = selectedFilters[key] ?? dynamicFilters[key]?.[0] ?? "";
   });
 
   setSelectedFilters(updated);
