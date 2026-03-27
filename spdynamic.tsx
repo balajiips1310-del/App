@@ -473,7 +473,7 @@ const columnsToRender =
 
   {/* DATE CHIP */}
   {(tempSelectedFilters.includes("dateRange") || dateRange.from || dateRange.to) && (
-    <Popover>
+    <Popover positioning={{ position: "below", align: "start" }}>
       <PopoverTrigger disableButtonEnhancement>
         <Button
   appearance="outline"
@@ -495,11 +495,19 @@ const columnsToRender =
 </Button>
       </PopoverTrigger>
 
-      <PopoverSurface style={{ padding: "12px", width: "220px" }}>
+      <PopoverSurface
+  style={{
+    padding: "12px",
+    minWidth: "260px",
+    maxWidth: "400px",
+    width: "auto"
+  }}
+>
         <Text weight="semibold">Filter by Date</Text>
 
         <Input
           type="date"
+          style={{ width: "100%" }}
           value={dateRange.from}
           onChange={(_, d) =>
             setDateRange((prev) => ({ ...prev, from: d.value }))
@@ -508,6 +516,7 @@ const columnsToRender =
 
         <Input
           type="date"
+          style={{ width: "100%" }}
           value={dateRange.to}
           style={{ marginTop: "8px" }}
           onChange={(_, d) =>
@@ -563,12 +572,25 @@ const columnsToRender =
 </Button>
         </PopoverTrigger>
 
-        <PopoverSurface style={{ padding: "12px", width: "220px" }}>
+        <PopoverSurface
+  style={{
+    padding: "12px",
+    width: "260px",
+    overflow: "hidden"
+  }}
+>
           <Text weight="semibold">Filter by {col}</Text>
+          <Input
+  placeholder="Search values..."
+  value={filterSearchQuery}
+  onChange={(_, d) => setFilterSearchQuery(d.value)}
+  style={{ marginTop: "8px", marginBottom: "8px" }}
+/>
 {/* ✅ DATE FILTER */}
 {isDateColumn(col) && (
   <Input
     type="date"
+    style={{ width: "100%" }}
     value={value || ""}
     onChange={(_, d) => {
       setSelectedFilters((prev) => ({
@@ -594,7 +616,11 @@ const columnsToRender =
 
 {/* ✅ NORMAL FILTER */}
 {!isDateColumn(col) && !isDateTimeColumn(col) &&
-  dynamicFilters[col]?.map((val) => (
+  dynamicFilters[col]
+  ?.filter((val) =>
+    val.toString().toLowerCase().includes(filterSearchQuery.toLowerCase())
+  )
+  .map((val) => (
     <div key={val} style={{ marginTop: "6px" }}>
       <input
         type="radio"
@@ -606,11 +632,23 @@ const columnsToRender =
           }));
         }}
       />
-      <span style={{ marginLeft: "6px" }}>{val}</span>
+      <span
+  style={{
+    marginLeft: "6px",
+    display: "inline-block",
+    maxWidth: "300px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap"
+  }}
+  title={val}
+>
+  {val}
+</span>
     </div>
   ))}
 
-          <Button
+          {/* <Button
             appearance="primary"
             style={{ marginTop: "10px", width: "100%" }}
             onClick={() => {
@@ -621,7 +659,7 @@ const columnsToRender =
             }}
           >
             Apply
-          </Button>
+          </Button> */}
         </PopoverSurface>
       </Popover>
     );
