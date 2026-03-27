@@ -1021,7 +1021,7 @@ const columnsToRender =
     {[
   ...Object.keys(dynamicFilters)
     .filter((col) => col !== "startDate" && col !== "endDate"),
-  "dateRange" 
+  
 ]
       .filter((col) =>
         col.toLowerCase().includes(filterSearchQuery.toLowerCase())
