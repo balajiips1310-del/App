@@ -1,4 +1,4 @@
-  import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Filter24Regular, Dismiss24Regular } from "@fluentui/react-icons";
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '@/contexts/ChatContext';
@@ -50,7 +50,7 @@ import { SegmentState, SegmentCycle, SegmentListItem } from '@/types/segment';
 import { segmentService } from '@/services/segmentService';
 import '@/styles/SegmentsPage.css';
 
-// type SortField = 'name' | 'state' | 'nextScheduledDateTime' | 'cycle' | 'audiencesCount' | 'startDate' | 'endDate';
+
 type SortField = string;
 type SortDirection = 'asc' | 'desc';
 
@@ -72,7 +72,7 @@ export const SegmentsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
 
-const [dynamicFilters, setDynamicFilters] = useState<Record<string, any[]>>({});//changes
+const [dynamicFilters, setDynamicFilters] = useState<Record<string, any[]>>({});
 const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
 const [filterValueSearch, setFilterValueSearch] = useState<Record<string, string>>({}); 
 
@@ -135,33 +135,31 @@ useEffect(() => {
     }
   }, [searchQuery, stateFilter, cycleFilter, sortField, sortDirection, currentPage, pageSize]);
 
-  // useEffect(() => {
-  //   fetchSegments();
-  // }, [fetchSegments]);
 
-  useEffect(() => {
-  fetchSegments();
-}, [fetchSegments]);
 
-useEffect(() => {
-  if (segments.length > 0) {
-    const filters = generateDynamicFilters(segments);
-    setDynamicFilters(filters);
+  useEffect(() => 
+    {
+    fetchSegments();
+    }, [fetchSegments]);
 
-const keys = new Set<string>();
+useEffect(() =>
+   {
+    if (segments.length > 0)
+      {
+          const filters = generateDynamicFilters(segments);
+          setDynamicFilters(filters);
+          const keys = new Set<string>();
+          segments.forEach((item) => 
+            {
+              Object.keys(item).forEach((k) => 
+                {
+                  if (k !== "id") keys.add(k);
+            });
+            });
+          setAvailableColumns(Array.from(keys));
+        }
+    }, [segments]);
 
-segments.forEach((item) => {
-  Object.keys(item).forEach((k) => {
-    if (k !== "id") keys.add(k);
-  });
-});
-
-setAvailableColumns(Array.from(keys));
-  }
-}, [segments]);
-// useEffect(() => {
-//   setSelectedColumns(["state", "cycle", "createdBy"]);
-// }, []);
 useEffect(() => {
   if (availableColumns.length > 0 && selectedColumns.length === 0) {
     const defaultCols = [
@@ -177,7 +175,7 @@ useEffect(() => {
     setSelectedColumns(defaultCols.filter(col => availableColumns.includes(col)));
   }
 }, [availableColumns]);
-//changes
+
   const EXCLUDED_COLUMNS = ["name", "description", "id", "isRunning", "startDate", "endDate" ];
 
 const getFilterableColumns = (data: any[]) => {
@@ -199,7 +197,7 @@ const generateDynamicFilters = (data: any[]) => {
 
   return filters;
 };
-//-----
+
 const filteredSegments = segments.filter((row) => {
   return Object.keys(selectedFilters).every((col) => {
     const filterValue = selectedFilters[col];
@@ -207,7 +205,7 @@ const filteredSegments = segments.filter((row) => {
 
     const cellValue = row[col];
 
-    // ✅ DATE ONLY (ignore time)
+    
 if (isDateColumn(col)) {
   const cellDate = new Date(cellValue);
   const filterDate = new Date(filterValue);
@@ -219,7 +217,7 @@ if (isDateColumn(col)) {
   );
 }
 
-// ✅ DATETIME (full comparison)
+
 if (isDateTimeColumn(col)) {
   return new Date(cellValue).getTime() === new Date(filterValue).getTime();
 }
@@ -248,7 +246,7 @@ if (isNaN(rowDate.getTime())) return false;
     if (rowDate > toDate) return false;
   }
 
-  return true; // ✅ THIS WAS MISSING
+  return true; 
 });
 const allColumns = React.useMemo(() => {
   if (!segments || segments.length === 0) return [];
@@ -267,47 +265,6 @@ const allColumns = React.useMemo(() => {
 const columnsToRender =
   selectedColumns.length > 0 ? selectedColumns : allColumns;
 
-  // Client-side sorting for the combined data
-  // const sortedSegments = [...filteredSegments].sort((a, b) => {
-  //   let aValue: string | number | null = null;
-  //   let bValue: string | number | null = null;
-
-  //   switch (sortField) {
-  //     case 'name':
-  //       aValue = a.name.toLowerCase();
-  //       bValue = b.name.toLowerCase();
-  //       break;
-  //     case 'state':
-  //       aValue = a.state;
-  //       bValue = b.state;
-  //       break;
-  //     case 'nextScheduledDateTime':
-  //       aValue = a.nextScheduledDateTime || '';
-  //       bValue = b.nextScheduledDateTime || '';
-  //       break;
-  //     case 'cycle':
-  //       aValue = a.cycle;
-  //       bValue = b.cycle;
-  //       break;
-  //     case 'audiencesCount':
-  //       aValue = a.audiencesCount;
-  //       bValue = b.audiencesCount;
-  //       break;
-  //     case 'startDate':
-  //       aValue = a.startDate || '';
-  //       bValue = b.startDate || '';
-  //       break;
-  //     case 'endDate':
-  //       aValue = a.endDate || '';
-  //       bValue = b.endDate || '';
-  //       break;
-  //   }
-
-  //   if (aValue === null || bValue === null) return 0;
-  //   if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-  //   if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-  //   return 0;
-  // });
   const sortedSegments = [...filteredSegments].sort((a, b) => {
   const aValue = (a as any)[sortField];
   const bValue = (b as any)[sortField];
@@ -391,29 +348,6 @@ const columnsToRender =
 
   <div className="segments-header-actions">
   
-
-{/* <Button
-  appearance="subtle"
-  icon={<Filter24Regular />}
-  onClick={() => {
-    setFilterSearchQuery("");
-    setTempSelectedColumns(
-      selectedColumns.length ? selectedColumns : availableColumns
-    );
-    setIsColumnPanelOpen(true);
-  }}
-/>
-
-<Button
-  appearance="subtle"
-  icon={<Add24Regular />}
-  onClick={() => {
-    setFilterSearchQuery("");
-    setTempSelectedFilters(Object.keys(selectedFilters));
-    setIsFilterPanelOpen(true);
-  }}
-/> */}
-
    <Button
       appearance="primary"
       icon={<Add24Regular />}
@@ -506,7 +440,7 @@ const columnsToRender =
     width: "auto"
   }}
 >
-        {/* <Text weight="semibold">Filter by Date</Text> */}
+      
 
         <Input
           type="date"
@@ -525,23 +459,13 @@ const columnsToRender =
             setDateRange((prev) => ({ ...prev, to: d.value }))
           }
         />
-
-        {/* <Button
-          appearance="primary"
-          style={{ marginTop: "10px", width: "100%" }}
-          onClick={() => {
-            localStorage.setItem("dateRange", JSON.stringify(dateRange));
-          }}
-        >
-          Apply
-        </Button> */}
       </PopoverSurface>
     </Popover>
   )}
 
-  {/* OTHER FILTER CHIPS */}
+  
   {Object.keys(selectedFilters)
-  .filter((col) => col !== "dateRange") // ✅ correct fix
+  .filter((col) => col !== "dateRange") 
   .map((col) => {
     const value = selectedFilters[col];
     
@@ -549,12 +473,12 @@ const columnsToRender =
     return (
       <Popover
   key={col}
-  positioning={{ position: "below", align: "start" }} // ✅ FIX
+  positioning={{ position: "below", align: "start" }} 
 >
         <PopoverTrigger disableButtonEnhancement>
         <Button
   appearance="outline"
-  // onClick={(e) => e.stopPropagation()}
+  
 >
   {
   col === "nextScheduledDateTime"
@@ -590,8 +514,8 @@ const columnsToRender =
     padding: "12px",
     minWidth: "260px",
     maxWidth: "400px",
-    maxHeight: "300px",   // ✅ ADD
-    overflowY: "auto"     // ✅ ADD SCROLL
+    maxHeight: "300px",   
+    overflowY: "auto"     
   }}
 >
           
@@ -608,7 +532,7 @@ onChange={(_, d) =>
     style={{ marginTop: "8px", marginBottom: "8px" }}
   />
 )}
-{/* ✅ DATE FILTER */}
+
 {isDateColumn(col) && (
   <Input
     type="date"
@@ -622,7 +546,7 @@ onChange={(_, d) =>
     }}
   />
 )}
-{/* ✅ DATETIME FILTER */}
+
 {isDateTimeColumn(col) && (
   <Input
     type="datetime-local"
@@ -636,7 +560,7 @@ onChange={(_, d) =>
   />
 )}
 
-{/* ✅ NORMAL FILTER */}
+
 {!isDateColumn(col) && !isDateTimeColumn(col) &&
   dynamicFilters[col]
   ?.filter((val) =>
@@ -672,19 +596,6 @@ onChange={(_, d) =>
 </span>
     </div>
   ))}
-
-          {/* <Button
-            appearance="primary"
-            style={{ marginTop: "10px", width: "100%" }}
-            onClick={() => {
-              localStorage.setItem(
-                "selectedFilters",
-                JSON.stringify(selectedFilters)
-              );
-            }}
-          >
-            Apply
-          </Button> */}
         </PopoverSurface>
       </Popover>
     );
@@ -708,53 +619,7 @@ onChange={(_, d) =>
             <Table className="segments-table" aria-label="Segments list" style={{
       tableLayout: "auto"
 }}>
-              {/* <TableHeader>
-                <TableRow>
-                  <TableHeaderCell>
-                    <span className="sortable-header" onClick={() => handleSort('name')}>
-                      Name
-                      <span className="sort-icon">{renderSortIcon('name')}</span>
-                    </span>
-                  </TableHeaderCell>
-                  <TableHeaderCell>Description</TableHeaderCell>
-                  <TableHeaderCell>
-                    <span className="sortable-header" onClick={() => handleSort('state')}>
-                      State
-                      <span className="sort-icon">{renderSortIcon('state')}</span>
-                    </span>
-                  </TableHeaderCell>
-                  <TableHeaderCell>
-                    <span className="sortable-header" onClick={() => handleSort('nextScheduledDateTime')}>
-                      Next Scheduled
-                      <span className="sort-icon">{renderSortIcon('nextScheduledDateTime')}</span>
-                    </span>
-                  </TableHeaderCell>
-                  <TableHeaderCell>
-                    <span className="sortable-header" onClick={() => handleSort('cycle')}>
-                      Cycle
-                      <span className="sort-icon">{renderSortIcon('cycle')}</span>
-                    </span>
-                  </TableHeaderCell>
-                  <TableHeaderCell>
-                    <span className="sortable-header" onClick={() => handleSort('audiencesCount')}>
-                      Audiences
-                      <span className="sort-icon">{renderSortIcon('audiencesCount')}</span>
-                    </span>
-                  </TableHeaderCell>
-                  <TableHeaderCell>
-                    <span className="sortable-header" onClick={() => handleSort('startDate')}>
-                      Start Date
-                      <span className="sort-icon">{renderSortIcon('startDate')}</span>
-                    </span>
-                  </TableHeaderCell>
-                  <TableHeaderCell>
-                    <span className="sortable-header" onClick={() => handleSort('endDate')}>
-                      End Date
-                      <span className="sort-icon">{renderSortIcon('endDate')}</span>
-                    </span>
-                  </TableHeaderCell>
-                </TableRow>
-              </TableHeader> */}
+           
               <TableHeader>
   <TableRow>
     {columnsToRender.map((key) => (
@@ -816,50 +681,6 @@ onChange={(_, d) =>
     textOverflow: "ellipsis"
   }}
 >
-{/*  
-    {key === "name" ? (
-    <span
-      className="segment-name-cell"
-      onClick={() => handleSegmentClick(segment.id)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          handleSegmentClick(segment.id);
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      style={{
-        cursor: "pointer",
-        color: "#0f6cbd",
-        fontWeight: 500,
-      }}
-    >
-      {segment.name}
-    </span>
-  ) : key === "state" ? (
-    renderStateBadge(segment.state)
-  ) : key === "cycle" ? (
-    renderCycleBadge(segment.cycle)
-  ) : key.toLowerCase().includes("date") ? (
-    formatDate((segment as any)[key])
-  ) : (
-<span
-  style={{
-    display: "inline-block",
-    maxWidth:
-      key === "name"
-        ? "220px"
-        : key === "description"
-        ? "260px"
-        : "120px",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap"
-  }}
->
-  {(segment as any)[key]?.toString() || "-"}
-</span>
-  )} */}
  {key === "name" ? (
   <Tooltip content={segment.name} relationship="label">
     <span
