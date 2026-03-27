@@ -87,6 +87,10 @@ const [dateRange, setDateRange] = useState({
   from: "",
   to: ""
 });
+const [tempDateRange, setTempDateRange] = useState({
+  from: "",
+  to: ""
+});
 
 const isDateTimeColumn = (col: string) =>
   col.toLowerCase().includes("time");
@@ -384,6 +388,7 @@ const columnsToRender =
   icon={<Filter24Regular />}
   onClick={() => {
     setFilterSearchQuery("");
+    setTempDateRange(dateRange);
     setTempSelectedFilters([
   ...Object.keys(selectedFilters),
   ...(dateRange.from || dateRange.to ? ["dateRange"] : [])
@@ -445,19 +450,19 @@ const columnsToRender =
         <Input
           type="date"
           style={{ width: "100%" }}
-          value={dateRange.from}
-          onChange={(_, d) =>
-            setDateRange((prev) => ({ ...prev, from: d.value }))
-          }
+          value={tempDateRange.from}
+onChange={(_, d) =>
+  setTempDateRange((prev) => ({ ...prev, from: d.value }))
+}
         />
 
         <Input
           type="date"
           style={{ width: "100%",marginTop: "8px" }}
-          value={dateRange.to}
-          onChange={(_, d) =>
-            setDateRange((prev) => ({ ...prev, to: d.value }))
-          }
+          value={tempDateRange.to}
+onChange={(_, d) =>
+  setTempDateRange((prev) => ({ ...prev, to: d.value }))
+}
         />
       </PopoverSurface>
     </Popover>
@@ -878,8 +883,9 @@ onChange={(_, d) =>
     borderRadius: "4px",
     cursor: "pointer"
   }}
-  onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f2f1")}
-  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+  className="filter-row"
+  // onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f2f1")}
+  // onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
 >
           <input
             type="checkbox"
@@ -927,6 +933,7 @@ onChange={(_, d) =>
   setSelectedFilters(updated);
   // ✅ handle dateRange selection
 if (tempSelectedFilters.includes("dateRange")) {
+  setDateRange(tempDateRange);
   localStorage.setItem("dateRange", JSON.stringify(dateRange));
 }
 
