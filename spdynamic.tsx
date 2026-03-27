@@ -516,9 +516,8 @@ const columnsToRender =
 
         <Input
           type="date"
-          style={{ width: "100%" }}
+          style={{ width: "100%",marginTop: "8px" }}
           value={dateRange.to}
-          style={{ marginTop: "8px" }}
           onChange={(_, d) =>
             setDateRange((prev) => ({ ...prev, to: d.value }))
           }
@@ -538,12 +537,17 @@ const columnsToRender =
   )}
 
   {/* OTHER FILTER CHIPS */}
-  {Object.keys(selectedFilters).map((col) => {
+  {Object.keys(selectedFilters)
+  .filter((col) => col !== "dateRange")
+  .map((col) => {
     const value = selectedFilters[col];
     
 
     return (
-      <Popover key={col}>
+      <Popover
+  key={col}
+  positioning={{ position: "below", align: "start" }} // ✅ FIX
+>
         <PopoverTrigger disableButtonEnhancement>
         <Button
   appearance="outline"
@@ -572,20 +576,24 @@ const columnsToRender =
 </Button>
         </PopoverTrigger>
 
-        <PopoverSurface
+       <PopoverSurface
   style={{
     padding: "12px",
-    width: "260px",
-    overflow: "hidden"
+    minWidth: "260px",
+    maxWidth: "400px",
+    maxHeight: "300px",   // ✅ ADD
+    overflowY: "auto"     // ✅ ADD SCROLL
   }}
 >
           <Text weight="semibold">Filter by {col}</Text>
-          <Input
-  placeholder="Search values..."
-  value={filterSearchQuery}
-  onChange={(_, d) => setFilterSearchQuery(d.value)}
-  style={{ marginTop: "8px", marginBottom: "8px" }}
-/>
+         {!isDateColumn(col) && !isDateTimeColumn(col) && (
+  <Input
+    placeholder="Search values..."
+    value={filterSearchQuery}
+    onChange={(_, d) => setFilterSearchQuery(d.value)}
+    style={{ marginTop: "8px", marginBottom: "8px" }}
+  />
+)}
 {/* ✅ DATE FILTER */}
 {isDateColumn(col) && (
   <Input
