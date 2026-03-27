@@ -503,7 +503,7 @@ const columnsToRender =
     width: "auto"
   }}
 >
-        <Text weight="semibold">Filter by Date</Text>
+        {/* <Text weight="semibold">Filter by Date</Text> */}
 
         <Input
           type="date"
@@ -538,7 +538,7 @@ const columnsToRender =
 
   {/* OTHER FILTER CHIPS */}
   {Object.keys(selectedFilters)
-  .filter((col) => col !== "dateRange")
+  .filter((col))
   .map((col) => {
     const value = selectedFilters[col];
     
@@ -585,7 +585,7 @@ const columnsToRender =
     overflowY: "auto"     // ✅ ADD SCROLL
   }}
 >
-          <Text weight="semibold">Filter by {col}</Text>
+          
          {!isDateColumn(col) && !isDateTimeColumn(col) && (
   <Input
     placeholder="Search values..."
@@ -1029,11 +1029,14 @@ onChange={(_, d) =>
     {[
   ...Object.keys(dynamicFilters)
     .filter((col) => col !== "startDate" && col !== "endDate"),
+   "dateRange" 
   
 ]
-      .filter((col) =>
-        col.toLowerCase().includes(filterSearchQuery.toLowerCase())
-      )
+     .filter((col) =>
+  col === "dateRange"
+    ? "schedule range".includes(filterSearchQuery.toLowerCase())
+    : col.toLowerCase().includes(filterSearchQuery.toLowerCase())
+)
       .map((col) => (
  <div
   key={col}
