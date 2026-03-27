@@ -538,7 +538,7 @@ const columnsToRender =
       </PopoverSurface>
     </Popover>
   )}
-  
+
   {/* OTHER FILTER CHIPS */}
   {Object.keys(selectedFilters)
   .filter((col) => col !== "dateRange") // ✅ correct fix
@@ -556,7 +556,13 @@ const columnsToRender =
   appearance="outline"
   // onClick={(e) => e.stopPropagation()}
 >
-  {col} | {value}
+  {
+  col === "nextScheduledDateTime"
+    ? "Next Scheduled"
+    : col
+        .replace(/([A-Z])/g, " $1")
+        .replace(/^./, (s) => s.toUpperCase())
+} | {value}
 
   <span
     style={{ marginLeft: "6px", cursor: "pointer" }}
@@ -1133,7 +1139,7 @@ if (tempSelectedFilters.includes("dateRange")) {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
       
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <Filter24Regular />
+        <Add24Regular />
         <Text weight="semibold">Select Columns</Text>
       </div>
 
