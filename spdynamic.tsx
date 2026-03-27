@@ -719,10 +719,13 @@ const columnsToRender =
             gap: "4px",
           }}
         >
-          {key
-            .replace(/([A-Z])/g, " $1")
-            .replace(/^./, (s) => s.toUpperCase())}
-
+         {
+  key === "nextScheduledDateTime"
+    ? "Next Scheduled"
+    : key
+        .replace(/([A-Z])/g, " $1")
+        .replace(/^./, (s) => s.toUpperCase())
+}
           <span className="sort-icon">
             {renderSortIcon(key)}
           </span>
@@ -749,7 +752,7 @@ const columnsToRender =
     textOverflow: "ellipsis"
   }}
 >
- 
+{/*  
     {key === "name" ? (
     <span
       className="segment-name-cell"
@@ -792,7 +795,43 @@ const columnsToRender =
 >
   {(segment as any)[key]?.toString() || "-"}
 </span>
-  )}
+  )} */}
+  {(() => {
+  let displayValue = "";
+
+  if (key === "name") {
+    displayValue = segment.name;
+  } else if (key === "state") {
+    return renderStateBadge(segment.state); // keep as is (no tooltip needed)
+  } else if (key === "cycle") {
+    return renderCycleBadge(segment.cycle); // keep as is
+  } else if (key.toLowerCase().includes("date")) {
+    displayValue = formatDate((segment as any)[key]);
+  } else {
+    displayValue = (segment as any)[key]?.toString() || "-";
+  }
+
+  return (
+    <Tooltip content={displayValue} relationship="label">
+      <span
+        style={{
+          display: "inline-block",
+          maxWidth:
+            key === "name"
+              ? "220px"
+              : key === "description"
+              ? "260px"
+              : "120px",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {displayValue}
+      </span>
+    </Tooltip>
+  );
+})()}
 </TableCellLayout>
         </TableCell>
       ))}
