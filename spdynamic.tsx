@@ -74,7 +74,7 @@ export const SegmentsPage: React.FC = () => {
 
 const [dynamicFilters, setDynamicFilters] = useState<Record<string, any[]>>({});//changes
 const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
-
+const [filterValueSearch, setFilterValueSearch] = useState<Record<string, string>>({}); 
 
 const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
@@ -589,8 +589,13 @@ const columnsToRender =
          {!isDateColumn(col) && !isDateTimeColumn(col) && (
   <Input
     placeholder="Search values..."
-    value={filterSearchQuery}
-    onChange={(_, d) => setFilterSearchQuery(d.value)}
+value={filterValueSearch[col] || ""}
+onChange={(_, d) =>
+  setFilterValueSearch((prev) => ({
+    ...prev,
+    [col]: d.value
+  }))
+}
     style={{ marginTop: "8px", marginBottom: "8px" }}
   />
 )}
@@ -626,8 +631,11 @@ const columnsToRender =
 {!isDateColumn(col) && !isDateTimeColumn(col) &&
   dynamicFilters[col]
   ?.filter((val) =>
-    val.toString().toLowerCase().includes(filterSearchQuery.toLowerCase())
-  )
+  val
+    .toString()
+    .toLowerCase()
+    .includes((filterValueSearch[col] || "").toLowerCase())
+)
   .map((val) => (
     <div key={val} style={{ marginTop: "6px" }}>
       <input
