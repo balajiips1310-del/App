@@ -414,7 +414,7 @@ const columnsToRender =
 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
 
   {/* DATE CHIP */}
-  {(tempSelectedFilters.includes("dateRange") || dateRange.from || dateRange.to) && (
+  {("dateRange" in selectedFilters) && (
     <Popover positioning={{ position: "below", align: "start" }}>
       <PopoverTrigger disableButtonEnhancement>
         <Button
@@ -928,13 +928,14 @@ onChange={(_, d) =>
     // ✅ NO DEFAULT VALUE
     updated[key] = selectedFilters[key] || "";
   });
-
-  setSelectedFilters(updated);
-  setDateRange(tempDateRange);
-  // ✅ handle dateRange selection
-if (tempSelectedFilters.includes("dateRange")) {
+  if (tempSelectedFilters.includes("dateRange")) {
+  updated["dateRange"] = "applied"; // just a flag
   localStorage.setItem("dateRange", JSON.stringify(dateRange));
 }
+
+  setSelectedFilters(updated);
+  // setDateRange(tempDateRange);
+  // ✅ handle dateRange selection
 
   localStorage.setItem("selectedFilters", JSON.stringify(updated));
 
