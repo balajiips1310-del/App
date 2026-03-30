@@ -1,8 +1,3 @@
-.filter-row:hover {
-  background-color: var(--colorNeutralBackground1Hover);
-}
--------------
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Filter24Regular, Dismiss24Regular } from "@fluentui/react-icons";
 import { useNavigate } from 'react-router-dom';
@@ -393,11 +388,11 @@ const columnsToRender =
   icon={<Filter24Regular />}
   onClick={() => {
     setFilterSearchQuery("");
-    setTempDateRange(dateRange);
     setTempSelectedFilters([
   ...Object.keys(selectedFilters),
   ...(dateRange.from || dateRange.to ? ["dateRange"] : [])
 ]);
+    setTempDateRange(dateRange);
     setIsFilterPanelOpen(true);
   }}
 />  
@@ -419,12 +414,11 @@ const columnsToRender =
 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
 
   {/* DATE CHIP */}
-  {(dateRange.from || dateRange.to) && (
+  {(tempSelectedFilters.includes("dateRange") || dateRange.from || dateRange.to) && (
     <Popover positioning={{ position: "below", align: "start" }}>
       <PopoverTrigger disableButtonEnhancement>
         <Button
   appearance="outline"
-  onClick={() => setTempDateRange(dateRange)}
   // onClick={(e) => e.stopPropagation()}
 >
   Schedule Range | {dateRange.from || "?"} → {dateRange.to || "?"}
@@ -457,18 +451,18 @@ const columnsToRender =
           type="date"
           style={{ width: "100%" }}
           value={tempDateRange.from}
-onChange={(_, d) =>
-  setTempDateRange((prev) => ({ ...prev, from: d.value }))
-}
+          onChange={(_, d) =>
+            setDateRange((prev) => ({ ...prev, from: d.value }))
+          }
         />
 
         <Input
           type="date"
           style={{ width: "100%",marginTop: "8px" }}
           value={tempDateRange.to}
-onChange={(_, d) =>
-  setTempDateRange((prev) => ({ ...prev, to: d.value }))
-}
+          onChange={(_, d) =>
+            setDateRange((prev) => ({ ...prev, to: d.value }))
+          }
         />
       </PopoverSurface>
     </Popover>
@@ -889,9 +883,8 @@ onChange={(_, d) =>
     borderRadius: "4px",
     cursor: "pointer"
   }}
-  className="filter-row"
-  // onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f2f1")}
-  // onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+  onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f2f1")}
+  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
 >
           <input
             type="checkbox"
@@ -937,16 +930,12 @@ onChange={(_, d) =>
   });
 
   setSelectedFilters(updated);
+  setDateRange(tempDateRange);
   // ✅ handle dateRange selection
 if (tempSelectedFilters.includes("dateRange")) {
-  setDateRange(tempDateRange);
-  localStorage.setItem("dateRange", JSON.stringify(tempDateRange));
-} else {
-  // ✅ CLEAR IF UNCHECKED
-  const cleared = { from: "", to: "" };
-  setDateRange(cleared);
-  localStorage.setItem("dateRange", JSON.stringify(cleared));
+  localStorage.setItem("dateRange", JSON.stringify(dateRange));
 }
+
   localStorage.setItem("selectedFilters", JSON.stringify(updated));
 
   setIsFilterPanelOpen(false);
@@ -955,7 +944,7 @@ if (tempSelectedFilters.includes("dateRange")) {
       Apply
     </Button>
 
-    <Button onClick={() => {setTempDateRange(dateRange);setIsFilterPanelOpen(false)}}>
+    <Button onClick={() => setIsFilterPanelOpen(false)}>
       Cancel
     </Button>
   </DrawerFooter>
