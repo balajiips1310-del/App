@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Filter24Regular, Dismiss24Regular } from "@fluentui/react-icons";
+import { FilterRegular, Dismiss24Regular } from "@fluentui/react-icons";
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '@/contexts/ChatContext';
 import {
@@ -323,7 +323,20 @@ const columnsToRender =
 
 <div className="segments-filters">
   
-  <Tooltip content="Edit Columns" relationship="label">
+
+
+  <Input
+    className="segments-search"
+    placeholder="Search by name or description..."
+    contentBefore={<Search24Regular />}
+    value={searchQuery}
+    onChange={(_, data) => {
+      setSearchQuery(data.value);
+      setCurrentPage(1);
+    }}
+  />
+
+    <Tooltip content="Edit Columns" relationship="label">
  <Button
   appearance="subtle"
   icon={< Add24Regular />}
@@ -342,24 +355,13 @@ const columnsToRender =
   <Tooltip content="Add Filters" relationship="label">
   <Button
   appearance="subtle"
-  icon={<Filter24Regular />}
+  icon={<FilterRegular />}
   onClick={() => {
 
     setIsFilterPanelOpen(true);
   }}
 />  
 </Tooltip>
-
-  <Input
-    className="segments-search"
-    placeholder="Search by name or description..."
-    contentBefore={<Search24Regular />}
-    value={searchQuery}
-    onChange={(_, data) => {
-      setSearchQuery(data.value);
-      setCurrentPage(1);
-    }}
-  />
 </div>
 
       <Card className="segments-table-container" style={{ overflowX: 'auto',width: "100%" }}>
@@ -590,7 +592,7 @@ const columnsToRender =
     
     {/* Left side: Icon + Title */}
     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <Filter24Regular />
+      <FilterRegular />
       <Text weight="semibold">Filters</Text>
     </div>
 
