@@ -87,6 +87,10 @@ const [filters, setFilters] = useState({
   recurrence: [] as string[],
   createdBy: [] as string[],
 });
+  const filterKeys =
+  activeTab === "my"
+    ? (["state", "cycle", "recurrence"] as const)
+    : (["state", "cycle", "recurrence", "createdBy"] as const);
 
 const [filterSearch, setFilterSearch] = useState({
   state: "",
@@ -600,7 +604,7 @@ const columnsToRender =
 </DrawerHeader>
  <DrawerBody style={{ overflowY: "auto" }}>
 
-  {(["state", "cycle", "recurrence", "createdBy"] as const).map((key) => (
+  {filterKeys.map((key) => (
     <div key={key} style={{ marginBottom: "16px" }}>
       
       <Text weight="semibold" style={{ marginBottom: "6px", display: "block" }}>
@@ -629,9 +633,37 @@ const columnsToRender =
 
     </div>
   ))}
+<div
+  style={{
+    marginTop: "24px",
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "10px"
+  }}
+>
+  <Button
+    appearance="secondary"
+    onClick={() => setIsFilterPanelOpen(false)}
+  >
+    Close
+  </Button>
 
+  <Button
+    appearance="primary"
+    onClick={() => {
+      setFilters({
+        state: [],
+        cycle: [],
+        recurrence: [],
+        createdBy: [],
+      });
+    }}
+  >
+    Reset
+  </Button>
+</div>
 </DrawerBody>
-<DrawerFooter
+{/* <DrawerFooter
   style={{
     display: "flex",
     justifyContent: "flex-end",
@@ -660,7 +692,7 @@ const columnsToRender =
   >
     Close
   </Button>
-</DrawerFooter>
+</DrawerFooter> */}
 </Drawer>
 <Drawer
   open={isColumnPanelOpen}
