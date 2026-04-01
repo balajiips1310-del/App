@@ -799,8 +799,10 @@ const columnsToRender =
   >
     <Button
       appearance="primary"
+        disabled={tempSelectedColumns.length === 0}   // 👈 ADD THIS LINE
       onClick={() => {
         setSelectedColumns(tempSelectedColumns);
+        
 localStorage.setItem("selectedColumns", JSON.stringify(tempSelectedColumns));
         setIsColumnPanelOpen(false);
       }}
