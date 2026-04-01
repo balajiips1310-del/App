@@ -18,17 +18,15 @@ import {
   Dropdown,
   Option,
   Spinner,
-    Drawer,
+  Tab,
+  TabList,
+  Drawer,
   DrawerHeader,
-  DrawerHeaderTitle,
   DrawerBody,
   DrawerFooter,
 } from '@fluentui/react-components';
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverSurface,
-} from "@fluentui/react-components";
+import { useAuth } from '@/contexts/AuthContext';
+
 
 import {
   Search24Regular,
@@ -45,7 +43,7 @@ import {
   Drafts20Regular,
   CalendarClock20Regular,
 } from '@fluentui/react-icons';
-import { formatDateTime, formatDate } from '@/data/sampleData';
+import { formatDate } from '@/data/sampleData';
 import { SegmentState, SegmentCycle, SegmentListItem } from '@/types/segment';
 import { segmentService } from '@/services/segmentService';
 import '@/styles/SegmentsPage.css';
@@ -54,12 +52,14 @@ import '@/styles/SegmentsPage.css';
 type SortField = string;
 type SortDirection = 'asc' | 'desc';
 
+type SegmentTab = 'my' | 'all';
+
 export const SegmentsPage: React.FC = () => {
   const navigate = useNavigate();
   const { clearChat } = useChat();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<SegmentTab>('my');
   const [searchQuery, setSearchQuery] = useState('');
-  const [stateFilter, setStateFilter] = useState<SegmentState | 'All'>('All');
-  const [cycleFilter, setCycleFilter] = useState<SegmentCycle | 'All'>('All');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,53 +67,51 @@ export const SegmentsPage: React.FC = () => {
   
   // API state
   const [segments, setSegments] = useState<SegmentListItem[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  const [_totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
 
-const [dynamicFilters, setDynamicFilters] = useState<Record<string, any[]>>({});
-const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
-const [filterValueSearch, setFilterValueSearch] = useState<Record<string, string>>({}); 
 
 const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
 const [availableColumns, setAvailableColumns] = useState<string[]>([]);
 const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
 const [tempSelectedColumns, setTempSelectedColumns] = useState<string[]>([]);
-const [tempSelectedFilters, setTempSelectedFilters] = useState<string[]>([]);
+
 const [filterSearchQuery, setFilterSearchQuery] = useState("");
-const [dateRange, setDateRange] = useState({
-  from: "",
-  to: ""
+
+const [filters, setFilters] = useState({
+  state: [] as string[],
+  cycle: [] as string[],
+  recurrence: [] as string[],
+  createdBy: [] as string[],
 });
-const [tempDateRange, setTempDateRange] = useState({
-  from: "",
-  to: ""
+
+const [filterSearch, setFilterSearch] = useState({
+  state: "",
+  cycle: "",
+  recurrence: "",
+  createdBy: "",
 });
+const filterOptions = React.useMemo(() => {
+  const getUnique = (key: string) =>
+    [...new Set(segments.map((s: any) => s[key]).filter(Boolean))];
 
-const isDateTimeColumn = (col: string) =>
-  col.toLowerCase().includes("time");
-
-const isDateColumn = (col: string) =>
-  col.toLowerCase().includes("date") && !isDateTimeColumn(col);
-
+  return {
+    state: getUnique("state"),
+    cycle: getUnique("cycle"),
+    recurrence: getUnique("recurrence"),
+    createdBy: getUnique("createdBy"),
+  };
+}, [segments]);
 useEffect(() => {
   const savedColumns = localStorage.getItem("selectedColumns");
-  const savedFilters = localStorage.getItem("selectedFilters");
-  const savedDateRange = localStorage.getItem("dateRange");
 
   if (savedColumns) {
     setSelectedColumns(JSON.parse(savedColumns));
   }
 
-  if (savedFilters) {
-    setSelectedFilters(JSON.parse(savedFilters));
-  }
-
-  if (savedDateRange) {
-    setDateRange(JSON.parse(savedDateRange));
-  }
 }, []);
 
   // Fetch segments from API
@@ -123,8 +121,6 @@ useEffect(() => {
     try {
       const response = await segmentService.getList({
         search: searchQuery || undefined,
-        state: stateFilter !== 'All' ? stateFilter : undefined,
-        cycle: cycleFilter !== 'All' ? cycleFilter : undefined,
         sortBy: sortField,
         sortDirection,
         page: currentPage,
@@ -137,7 +133,7 @@ useEffect(() => {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, stateFilter, cycleFilter, sortField, sortDirection, currentPage, pageSize]);
+  }, [searchQuery, sortField, sortDirection, currentPage, pageSize]);
 
 
 
@@ -146,23 +142,18 @@ useEffect(() => {
     fetchSegments();
     }, [fetchSegments]);
 
-useEffect(() =>
-   {
-    if (segments.length > 0)
-      {
-          const filters = generateDynamicFilters(segments);
-          setDynamicFilters(filters);
-          const keys = new Set<string>();
-          segments.forEach((item) => 
-            {
-              Object.keys(item).forEach((k) => 
-                {
-                  if (k !== "id") keys.add(k);
-            });
-            });
-          setAvailableColumns(Array.from(keys));
-        }
-    }, [segments]);
+
+
+  // Filter segments by tab (My Segments vs All Segments)
+  const filteredByTab = segments.filter(segment => {
+    if (activeTab === 'my') {
+      // My Segments: created by current user
+      return segment.createdBy?.toLowerCase() === user?.email?.toLowerCase();
+    } else {
+      // All Segments: all other segments (not created by me)
+      return segment.createdBy?.toLowerCase() !== user?.email?.toLowerCase();
+    }
+  });
 
 useEffect(() => {
   if (availableColumns.length > 0 && selectedColumns.length === 0) {
@@ -180,79 +171,7 @@ useEffect(() => {
   }
 }, [availableColumns]);
 
-  const EXCLUDED_COLUMNS = ["name", "description", "id", "isRunning", "startDate", "endDate" ];
 
-const getFilterableColumns = (data: any[]) => {
-  if (!data || data.length === 0) return [];
-
-  return Object.keys(data[0]).filter(
-    (key) => !EXCLUDED_COLUMNS.includes(key)
-  );
-};
-
-const generateDynamicFilters = (data: any[]) => {
-  const columns = getFilterableColumns(data);
-
-  const filters: Record<string, any[]> = {};
-
-  columns.forEach((col) => {
-    filters[col] = [...new Set(data.map((item) => item[col]).filter(Boolean))];
-  });
-
-  return filters;
-};
-
-const filteredSegments = segments.filter((row) => {
-  return Object.keys(selectedFilters).every((col) => {
-      if (col === "dateRange") return true;
-    const filterValue = selectedFilters[col];
-    if (!filterValue) return true;
-
-    const cellValue = row[col];
-
-    
-if (isDateColumn(col)) {
-  const cellDate = new Date(cellValue);
-  const filterDate = new Date(filterValue);
-
-  return (
-    cellDate.getFullYear() === filterDate.getFullYear() &&
-    cellDate.getMonth() === filterDate.getMonth() &&
-    cellDate.getDate() === filterDate.getDate()
-  );
-}
-
-
-if (isDateTimeColumn(col)) {
-  return new Date(cellValue).getTime() === new Date(filterValue).getTime();
-}
-
-    return cellValue === filterValue;
-  });
-})
-.filter((row) => {
-  if (!dateRange.from && !dateRange.to) return true;
-
-  const rowDate = new Date(row.startDate || row.endDate);
-if (isNaN(rowDate.getTime())) return false;
-  rowDate.setHours(0, 0, 0, 0);
-
-  if (dateRange.from) {
-    const fromDate = new Date(dateRange.from);
-    fromDate.setHours(0, 0, 0, 0);
-
-    if (rowDate < fromDate) return false;
-  }
-
-  if (dateRange.to) {
-    const toDate = new Date(dateRange.to);
-    toDate.setHours(23, 59, 59, 999);
-
-    if (rowDate > toDate) return false;
-  }
-
-  return true; 
-});
 const allColumns = React.useMemo(() => {
   if (!segments || segments.length === 0) return [];
 
@@ -269,8 +188,17 @@ const allColumns = React.useMemo(() => {
 
 const columnsToRender =
   selectedColumns.length > 0 ? selectedColumns : allColumns;
+  const filteredSegments = filteredByTab.filter((row) => {
+  return (
+    (filters.state.length === 0 || filters.state.includes(row.state)) &&
+    (filters.cycle.length === 0 || filters.cycle.includes(row.cycle)) &&
+    (filters.recurrence.length === 0 || filters.recurrence.includes(row.recurrence)) &&
+    (filters.createdBy.length === 0 || filters.createdBy.includes(row.createdBy))
+  );
+});
 
   const sortedSegments = [...filteredSegments].sort((a, b) => {
+  
   const aValue = (a as any)[sortField];
   const bValue = (b as any)[sortField];
 
@@ -282,8 +210,12 @@ const columnsToRender =
   return 0;
 });
 
-  const totalPages = Math.ceil(totalCount / pageSize);
+
+  // Calculate pagination based on filtered data
+  const filteredCount = filteredSegments.length;
+  const totalPages = Math.ceil(filteredCount / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
+  const paginatedSegments = sortedSegments.slice(startIndex, startIndex + pageSize);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -338,7 +270,7 @@ const columnsToRender =
   const handleSegmentClick = (segmentId: string) => {
     navigate(`/segments/${segmentId}`);
   };
-  console.log("dynamicFilters:", dynamicFilters);
+
   return (
     <div className="segments-page">
     <div className="segments-page-header">
@@ -365,6 +297,21 @@ const columnsToRender =
     </Button>
   </div>
 </div>
+
+      {/* Tab Navigation */}
+      <div className="segments-tabs">
+        <TabList
+          selectedValue={activeTab}
+          onTabSelect={(_, data) => {
+            setActiveTab(data.value as SegmentTab);
+            setCurrentPage(1); // Reset to first page when switching tabs
+          }}
+        >
+          <Tab value="my">My Segments</Tab>
+          <Tab value="all">All Segments</Tab>
+        </TabList>
+      </div>
+
 <div className="segments-filters">
   
   <Tooltip content="Edit Columns" relationship="label">
@@ -372,7 +319,7 @@ const columnsToRender =
   appearance="subtle"
   icon={< Add24Regular />}
   onClick={() => {
-    setFilterSearchQuery("");
+    
     setTempSelectedColumns(
       selectedColumns.length ? selectedColumns : availableColumns
     );
@@ -388,12 +335,7 @@ const columnsToRender =
   appearance="subtle"
   icon={<Filter24Regular />}
   onClick={() => {
-    setFilterSearchQuery("");
-    setTempSelectedFilters([
-  ...Object.keys(selectedFilters),
-  ...(dateRange.from || dateRange.to ? ["dateRange"] : [])
-]);
-    setTempDateRange(dateRange);
+
     setIsFilterPanelOpen(true);
   }}
 />  
@@ -411,203 +353,6 @@ const columnsToRender =
   />
 </div>
 
-     {/* ✅ FILTER CHIPS UI */}
-<div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
-
-  {/* DATE CHIP */}
-  {("dateRange" in selectedFilters) && (
-    <Popover positioning={{ position: "below", align: "start" }}>
-      <PopoverTrigger disableButtonEnhancement>
-        <Button
-  appearance="outline"
-  // onClick={(e) => e.stopPropagation()}
->
-  Schedule Range | {dateRange.from || "?"} → {dateRange.to || "?"}
-
-  <span
-    style={{ marginLeft: "6px", cursor: "pointer" }}
-    onClick={(e) => {
-      e.stopPropagation();
-      const cleared = { from: "", to: "" };
-      setDateRange(cleared);
-      localStorage.setItem("dateRange", JSON.stringify(cleared));
-    }}
-  >
-    ✕
-  </span>
-</Button>
-      </PopoverTrigger>
-
-      <PopoverSurface
-  style={{
-    padding: "12px",
-    minWidth: "260px",
-    maxWidth: "400px",
-    width: "auto"
-  }}
->
-      
-
-        <Input
-          type="date"
-          style={{ width: "100%" }}
-          value={tempDateRange.from}
-          onChange={(_, d) =>
-            setDateRange((prev) => ({ ...prev, from: d.value }))
-          }
-        />
-
-        <Input
-          type="date"
-          style={{ width: "100%",marginTop: "8px" }}
-          value={tempDateRange.to}
-          onChange={(_, d) =>
-            setDateRange((prev) => ({ ...prev, to: d.value }))
-          }
-        />
-      </PopoverSurface>
-    </Popover>
-  )}
-
-  
-  {Object.keys(selectedFilters)
-  .filter((col) => col !== "dateRange") 
-  .map((col) => {
-    const value = selectedFilters[col];
-    
-
-    return (
-      <Popover
-  key={col}
-  positioning={{ position: "below", align: "start" }} 
->
-        <PopoverTrigger disableButtonEnhancement>
-        <Button
-  appearance="outline"
-  
->
-  {
-  col === "nextScheduledDateTime"
-    ? "Next Scheduled"
-    : col
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, (s) => s.toUpperCase())
-} | {value}
-
-  <span
-    style={{ marginLeft: "6px", cursor: "pointer" }}
-    onClick={(e) => {
-  e.stopPropagation();
-
-  setSelectedFilters((prev) => {
-    const updated = {
-      ...prev,
-      [col]: ""
-    };
-
-    localStorage.setItem("selectedFilters", JSON.stringify(updated));
-    return updated;
-  });
-}}
-  >
-    ✕
-  </span>
-</Button>
-        </PopoverTrigger>
-
-       <PopoverSurface
-  style={{
-    padding: "12px",
-    minWidth: "260px",
-    maxWidth: "400px",
-    maxHeight: "300px",   
-    overflowY: "auto"     
-  }}
->
-          
-         {!isDateColumn(col) && !isDateTimeColumn(col) && (
-  <Input
-    placeholder="Search values..."
-value={filterValueSearch[col] || ""}
-onChange={(_, d) =>
-  setFilterValueSearch((prev) => ({
-    ...prev,
-    [col]: d.value
-  }))
-}
-    style={{ marginTop: "8px", marginBottom: "8px" }}
-  />
-)}
-
-{isDateColumn(col) && (
-  <Input
-    type="date"
-    style={{ width: "100%" }}
-    value={value || ""}
-    onChange={(_, d) => {
-      setSelectedFilters((prev) => ({
-        ...prev,
-        [col]: d.value,
-      }));
-    }}
-  />
-)}
-
-{isDateTimeColumn(col) && (
-  <Input
-    type="datetime-local"
-    value={value || ""}
-    onChange={(_, d) => {
-      setSelectedFilters((prev) => ({
-        ...prev,
-        [col]: d.value,
-      }));
-    }}
-  />
-)}
-
-
-{!isDateColumn(col) && !isDateTimeColumn(col) &&
-  dynamicFilters[col]
-  ?.filter((val) =>
-  val
-    .toString()
-    .toLowerCase()
-    .includes((filterValueSearch[col] || "").toLowerCase())
-)
-  .map((val) => (
-    <div key={val} style={{ marginTop: "6px" }}>
-      <input
-        type="radio"
-        checked={value === val}
-        onChange={() => {
-          setSelectedFilters((prev) => ({
-            ...prev,
-            [col]: val,
-          }));
-        }}
-      />
-      <span
-  style={{
-    marginLeft: "6px",
-    display: "inline-block",
-    maxWidth: "300px",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap"
-  }}
-  title={val}
->
-  {val}
-</span>
-    </div>
-  ))}
-        </PopoverSurface>
-      </Popover>
-    );
-  })}
-
-</div>
       <Card className="segments-table-container" style={{ overflowX: 'auto',width: "100%" }}>
         {loading ? (
           <div className="loading-state">
@@ -620,7 +365,7 @@ onChange={(_, d) =>
               Retry
             </Button>
           </div>
-        ) : sortedSegments.length > 0 ? (
+        ) : paginatedSegments.length > 0 ? (
           <>
             <Table className="segments-table" aria-label="Segments list" style={{
       tableLayout: "auto"
@@ -670,7 +415,7 @@ onChange={(_, d) =>
   </TableRow>
 </TableHeader>
               <TableBody>
-  {sortedSegments.map((segment) => (
+  {paginatedSegments.map((segment) => (
     <TableRow key={segment.id}>
       {columnsToRender.map((key) => (
         <TableCell key={key}>
@@ -755,8 +500,8 @@ onChange={(_, d) =>
 
             <div className="segments-pagination">
               <span className="pagination-info">
-                Showing {startIndex + 1}-{Math.min(startIndex + pageSize, totalCount)} of{' '}
-                {totalCount}
+                Showing {filteredCount > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + pageSize, filteredCount)} of{' '}
+                {filteredCount}
               </span>
 
               <div className="pagination-controls">
@@ -798,11 +543,13 @@ onChange={(_, d) =>
           <div className="empty-state">
             <DocumentSearch24Regular className="empty-state-icon" style={{ fontSize: '48px' }} />
             <Text size={400} className="empty-state-text">
-              {(searchQuery || Object.values(selectedFilters).some(v => v))
+              {(searchQuery || false)
                 ? 'No segments match your filters.'
-                : 'No segments created yet.'}
+                : activeTab === 'my'
+                  ? 'You haven\'t created any segments yet.'
+                  : 'No other segments available.'}
             </Text>
-            {(!searchQuery && !Object.values(selectedFilters).some(v => v)) && (
+            {!searchQuery  && activeTab === 'my' && (
               <Button
                 appearance="primary"
                 icon={<Add24Regular />}
@@ -851,105 +598,75 @@ onChange={(_, d) =>
     Select which filters to display in your table.
   </Text>
 </DrawerHeader>
-  <DrawerBody style={{ overflowY: "auto", maxHeight: "100%" }}>
+  <DrawerBody style={{ overflowY: "auto" }}>
 
-    {/* 🔍 Search */}
-<Input
-  placeholder="Search filters..."
-  value={filterSearchQuery}
-  onChange={(_, data) => setFilterSearchQuery(data.value)}
-  style={{ marginBottom: "16px" }}
-/>
+  {(["state", "cycle", "recurrence", "createdBy"] as const).map((key) => (
+    <div key={key} style={{ marginBottom: "16px" }}>
+      
+      <Text weight="semibold">
+        {key.charAt(0).toUpperCase() + key.slice(1)}
+      </Text>
 
-    {/* ✅ Filter list */}
-    {[
-  ...Object.keys(dynamicFilters)
-    .filter((col) => col !== "startDate" && col !== "endDate"),
-   "dateRange" 
-  
-]
-     .filter((col) =>
-  col === "dateRange"
-    ? "schedule range".includes(filterSearchQuery.toLowerCase())
-    : col.toLowerCase().includes(filterSearchQuery.toLowerCase())
-)
-      .map((col) => (
- <div
-  key={col}
-  style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    padding: "6px 8px",
-    borderRadius: "4px",
-    cursor: "pointer"
-  }}
-  onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f2f1")}
-  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
->
-          <input
-            type="checkbox"
-            checked={tempSelectedFilters.includes(col)}
-            onChange={(e) => {
-  if (e.target.checked) {
-    setTempSelectedFilters((prev) =>
-      prev.includes(col) ? prev : [...prev, col]
-    );
-  } else {
-    setTempSelectedFilters((prev) =>
-      prev.filter((c) => c !== col)
-    );
-  }
-}}
-          />
-<Text size={400}>
-  {col === "dateRange"
-    ? "Schedule Range"
-    : col.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase())}
-</Text>
-        </div>
-      ))}
-  </DrawerBody>
+      <Input
+        placeholder="Search..."
+        value={filterSearch[key]}
+        onChange={(_, d) =>
+          setFilterSearch((prev) => ({ ...prev, [key]: d.value }))
+        }
+        style={{ marginTop: "6px", marginBottom: "6px" }}
+      />
 
-  <DrawerFooter
-  style={{
-    borderTop: "1px solid #eee",
-    paddingTop: "12px",
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "8px"
-  }}
->
-    <Button
-      appearance="primary"
-  onClick={() => {
-  const updated: Record<string, string> = {};
+      <div style={{ maxHeight: "150px", overflowY: "auto" }}>
+        {filterOptions[key]
+          .filter((val) =>
+            val.toLowerCase().includes(filterSearch[key].toLowerCase())
+          )
+          .map((val) => (
+            <div key={val}>
+              <input
+                type="checkbox"
+                checked={filters[key].includes(val)}
+                onChange={() => {
+                  setFilters((prev) => {
+                    const exists = prev[key].includes(val);
+                    return {
+                      ...prev,
+                      [key]: exists
+                        ? prev[key].filter((v) => v !== val)
+                        : [...prev[key], val],
+                    };
+                  });
+                  setCurrentPage(1);
+                }}
+              />
+              <span style={{ marginLeft: "6px" }}>{val}</span>
+            </div>
+          ))}
+      </div>
+    </div>
+  ))}
 
-  tempSelectedFilters.forEach((key) => {
-    // ✅ NO DEFAULT VALUE
-    updated[key] = selectedFilters[key] || "";
-  });
-  if (tempSelectedFilters.includes("dateRange")) {
-  updated["dateRange"] = "applied"; // just a flag
-  localStorage.setItem("dateRange", JSON.stringify(dateRange));
-}
+</DrawerBody>
 
-  setSelectedFilters(updated);
-  // setDateRange(tempDateRange);
-  // ✅ handle dateRange selection
+<DrawerFooter>
+  <Button
+    appearance="secondary"
+    onClick={() => {
+      setFilters({
+        state: [],
+        cycle: [],
+        recurrence: [],
+        createdBy: [],
+      });
+    }}
+  >
+    Reset
+  </Button>
 
-  localStorage.setItem("selectedFilters", JSON.stringify(updated));
-
-  setIsFilterPanelOpen(false);
-}}
-    >
-      Apply
-    </Button>
-
-    <Button onClick={() => setIsFilterPanelOpen(false)}>
-      Cancel
-    </Button>
-  </DrawerFooter>
+  <Button onClick={() => setIsFilterPanelOpen(false)}>
+    Close
+  </Button>
+</DrawerFooter>
 </Drawer>
 <Drawer
   open={isColumnPanelOpen}
