@@ -189,6 +189,11 @@ const allColumns = React.useMemo(() => {
 
   return Array.from(keys);
 }, [segments]); 
+useEffect(() => {
+  if (allColumns.length > 0) {
+    setAvailableColumns(allColumns);
+  }
+}, [allColumns]);
 
 const columnsToRender =
   selectedColumns.length > 0 ? selectedColumns : allColumns;
@@ -637,7 +642,7 @@ const columnsToRender =
   style={{
     marginTop: "24px",
     display: "flex",
-    justifyContent: "flex-end",
+    justifyContent: "flex-start",
     gap: "10px"
   }}
 >
