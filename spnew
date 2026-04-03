@@ -1,0 +1,68 @@
+-- ============================================================
+-- Stored Procedure: usp_InsertSegmentAuditLog
+-- PURPOSE: Insert audit log for early pipeline failures
+-- ============================================================
+
+CREATE PROCEDURE [dbo].[usp_InsertSegmentAuditLog]
+(
+    @SegmentId UNIQUEIDENTIFIER,
+    @Action NVARCHAR(100),              -- e.g. 'CreateRunFailed', 'LookupFailed'
+    @ErrorMessage NVARCHAR(MAX),
+    @Source NVARCHAR(50) = 'Pipeline'
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @SegmentName NVARCHAR(255);
+
+    BEGIN TRY
+
+        BEGIN TRANSACTION;
+
+        -- ============================================================
+        -- 1. Fetch Segment Name
+        -- ============================================================
+        SELECT @SegmentName = Name
+        FROM dbo.Segment
+        WHERE Id = @SegmentId;
+
+        -- ============================================================
+        -- 2. Insert Audit Log
+        -- ============================================================
+        INSERT INTO dbo.SegmentAuditLog
+        (
+            SegmentId,
+            SegmentName,
+            Action,
+            UserId,
+            UserEmail,
+            Details,
+            Source
+        )
+        VALUES
+        (
+            @SegmentId,
+            ISNULL(@SegmentName, 'Unknown Segment'),
+            @Action,
+            'SYSTEM_PIPELINE',
+            'admin@microsoft.com',
+            LEFT(@ErrorMessage, 3500),
+            @Source
+        );
+
+        COMMIT;
+
+    END TRY
+    BEGIN CATCH
+
+        IF @@TRANCOUNT > 0
+            ROLLBACK;
+
+        -- Do NOT fail pipeline due to logging issue
+        PRINT 'Audit log insert failed: ' + ERROR_MESSAGE();
+
+    END CATCH
+END;
+GO
