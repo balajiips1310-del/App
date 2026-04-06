@@ -288,14 +288,21 @@ try:
 
     result = main()
 
-    dbutils.notebook.exit(json.dumps(result))
-
+    mssparkutils.notebook.exit(json.dumps(result))
+    
 except Exception as e:
-    print("EXECUTION FAILED")
-    print(str(e))
-    print(traceback.format_exc())
 
-    dbutils.notebook.exit(json.dumps({
+    # Synapse throws a Py4JJavaError after notebook.exit()
+    msg = str(e)
+
+    # If our JSON already exists in the exception → notebook already exited correctly
+    if '"SUCCESS"' in msg:
+        raise
+
+
+    mssparkutils.notebook.exit(json.dumps({
         "status": "FAILED",
         "error": str(e)
     }))
+
+
