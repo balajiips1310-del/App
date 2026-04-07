@@ -60,3 +60,20 @@ SET LastExportRunId  = @ExportRunId,
     LastExportStatus = 'Failed',
     ModifiedAt       = SYSUTCDATETIME()
 WHERE Id = @ExportId;
+
+-------------------------------------
+
+except Exception as e:
+    msg = str(e)
+
+    try:
+        parsed = json.loads(msg)
+        if parsed.get("IsSuccess") == 1:
+            raise
+    except:
+        pass
+
+    mssparkutils.notebook.exit(json.dumps({
+        "IsSuccess": 0,
+        "error": msg
+    }))
