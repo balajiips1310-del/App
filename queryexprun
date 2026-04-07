@@ -7,3 +7,56 @@ VALUES (
     'Running',
     SYSUTCDATETIME()
 );
+
+
+--------------------------------------
+
+True:-
+DECLARE @ExportRunId UNIQUEIDENTIFIER = '@{activity('CreateExportRun').output.firstRow.ExportRunId}';
+DECLARE @ExportId    UNIQUEIDENTIFIER = '@{item().ExportId}';
+DECLARE @Now         DATETIME2 = SYSUTCDATETIME();
+
+-- Parse notebook output
+DECLARE @TotalRecords  BIGINT   = @{json(activity('ExecuteExportProcess').output.result.exitValue).total_records};
+DECLARE @FileSizeBytes BIGINT   = @{json(activity('ExecuteExportProcess').output.result.exitValue).file_size_bytes};
+DECLARE @BlobPath NVARCHAR(1000) = '@{json(activity('ExecuteExportProcess').output.result.exitValue).blob_path}';
+
+-- Update ExportRun
+UPDATE dbo.ExportRun
+SET Status       = 'Completed',
+    CompletedAt  = @Now,
+    TotalRecords = @TotalRecords,
+    FileSizeBytes= @FileSizeBytes,
+    BlobPath     = @BlobPath,
+    BlobUrl      = CONCAT('https://segmentationexports.blob.core.windows.net/audiences/', @BlobPath)
+WHERE Id = @ExportRunId;
+
+-- Update Export table with latest run info
+UPDATE dbo.Export
+SET LastExportRunId  = @ExportRunId,
+    LastExportedAt   = @Now,
+    LastExportStatus = 'Completed',
+    ModifiedAt       = @Now
+WHERE Id = @ExportId;
+
+
+------------------------------------------------
+False
+
+DECLARE @ExportRunId UNIQUEIDENTIFIER = '@{activity('CreateExportRun').output.firstRow.ExportRunId}';
+DECLARE @ExportId    UNIQUEIDENTIFIER = '@{item().ExportId}';
+
+-- Update ExportRun
+UPDATE dbo.ExportRun
+SET Status       = 'Failed',
+    CompletedAt  = SYSUTCDATETIME(),
+    ErrorMessage = '@{string(activity('ExecuteExportProcess').output.errors[0].message)}'
+WHERE Id = @ExportRunId;
+
+-- Update Export table
+UPDATE dbo.Export
+SET LastExportRunId  = @ExportRunId,
+    LastExportedAt   = SYSUTCDATETIME(),
+    LastExportStatus = 'Failed',
+    ModifiedAt       = SYSUTCDATETIME()
+WHERE Id = @ExportId;
