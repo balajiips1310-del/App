@@ -12,7 +12,7 @@ VALUES (
 --------------------------------------
 
 True:-
-DECLARE @ExportRunId UNIQUEIDENTIFIER = '@{activity('CreateExportRun').output.firstRow.ExportRunId}';
+DECLARE @ExportRunId UNIQUEIDENTIFIER = '@{activity('Script1').output.resultSets[0].rows[0].ExportRunId}';
 DECLARE @ExportId    UNIQUEIDENTIFIER = '@{item().ExportId}';
 DECLARE @Now         DATETIME2 = SYSUTCDATETIME();
 
@@ -43,7 +43,7 @@ WHERE Id = @ExportId;
 ------------------------------------------------
 False
 
-DECLARE @ExportRunId UNIQUEIDENTIFIER = '@{activity('CreateExportRun').output.firstRow.ExportRunId}';
+DECLARE @ExportRunId UNIQUEIDENTIFIER = '@{activity('Script1').output.resultSets[0].rows[0].ExportRunId}';
 DECLARE @ExportId    UNIQUEIDENTIFIER = '@{item().ExportId}';
 
 -- Update ExportRun
