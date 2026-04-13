@@ -17,13 +17,14 @@ def main():
             target_identifier   = config.get("TargetIdentifier")
             filters_json        = config.get("FiltersJson")
             filter_logic        = config.get("FilterLogic")
+            filter_expression   = config.get("FilterExpression")
             column_mappings     = config.get("ColumnMappingsJson")
             static_metadata     = config.get("StaticMetadataJson")
             last_exported_at    = config.get("LastExportedAt")
 
-            # 🔴 NEW (SUPPRESSION)
-            suppression_json    = config.get("SuppressionJson")
-            suppression_logic   = config.get("SuppressionLogic")
+            export_id           = config.get("ExportId")
+            export_run_id       = config.get("ExportRunId")
+            apply_suppression   = config.get("ApplySuppressionRules")
 
             print(f"Config parsed: {export_name}")
 
@@ -41,22 +42,14 @@ def main():
             raise Exception(f"READ_DATA: {str(e)}")
 
         # ====================================================
-        # PHASE 3: INCREMENTAL FILTER
-        # ====================================================
-        try:
-            print("[PHASE 3] Incremental filtering...")
-            if export_type == "Incremental" and watermark_column and last_exported_at:
-                df = df.filter(F.col(watermark_column) > F.lit(last_exported_at))
-        except Exception as e:
-            raise Exception(f"INCREMENTAL_FILTER: {str(e)}")
-
-        # ====================================================
         # PHASE 4: APPLY FILTERS
         # ====================================================
         try:
             print("[PHASE 4] Applying filters...")
 
             filters = safe_json(filters_json)
+            df_filter_excluded = None
+            combined = None
 
             if filters:
                 conditions = []
@@ -86,92 +79,232 @@ def main():
                     elif operator == "between":
                         vals = [v.strip() for v in str(value).split(",")]
                         conditions.append(F.col(col_name).between(vals[0], vals[1]))
+                    elif operator == "before":
+                        conditions.append(F.col(col_name) < value)
+                    elif operator == "after":
+                        conditions.append(F.col(col_name) > value)
+                    elif operator == "is within":
+                        import re
+                        match = re.search(r"(\d+)", str(value))
+                        if match:
+                            days = int(match.group(1))
+                            conditions.append(F.col(col_name) >= F.date_sub(F.current_date(), days))
 
                 if conditions:
-                    combined = conditions[0]
-                    for c in conditions[1:]:
-                        combined = combined & c if filter_logic != "Or" else combined | c
+                    if filter_logic == "And":
+                        combined = conditions[0]
+                        for c in conditions[1:]:
+                            combined = combined & c
+                    elif filter_logic == "Or":
+                        combined = conditions[0]
+                        for c in conditions[1:]:
+                            combined = combined | c
+                    elif filter_logic == "Custom" and filter_expression:
+                        combined = F.expr(filter_expression)
 
+                if combined is not None:
+                    df_filter_excluded = df.filter(~combined)\
+                        .withColumn("SuppressionCategory", F.lit("ExportFilter"))
                     df = df.filter(combined)
 
         except Exception as e:
             raise Exception(f"FILTERING: {str(e)}")
 
         # ====================================================
-        # 🔴 PHASE 4.5: SUPPRESSION LOGIC (NEW)
+        # PHASE 4.5: SUPPRESSION
         # ====================================================
         try:
-            print("[PHASE 4.5] Applying suppression...")
+            df_supp_excluded = None
+            encrypted_columns = set()
 
-            suppressions = safe_json(suppression_json)
+            if apply_suppression and str(apply_suppression).lower() == "true":
+                from your_encryption_package import decrypt
+                from pyspark.sql.functions import udf
+                from pyspark.sql.types import StringType
 
-            if suppressions:
-                conditions = []
+                rules_df = spark.table("segmentation.suppression_rules") \
+                    .filter(F.col("is_active") == True)
 
-                for s_item in suppressions:
-                    col_name = s_item.get("column")
-                    operator = s_item.get("operator")
-                    value    = s_item.get("value")
+                rules = rules_df.collect()
 
-                    if operator == "equals":
-                        conditions.append(F.col(col_name) == value)
-                    elif operator == "not equals":
-                        conditions.append(F.col(col_name) != value)
-                    elif operator == "contains":
-                        conditions.append(F.col(col_name).contains(value))
-                    elif operator == "starts with":
-                        conditions.append(F.col(col_name).startswith(value))
-                    elif operator == "is empty":
-                        conditions.append(F.col(col_name).isNull() | (F.col(col_name) == ""))
-                    elif operator == "is in":
-                        values = [v.strip() for v in str(value).split(",")]
-                        conditions.append(F.col(col_name).isin(values))
-                    elif operator in (">", ">=", "<", "<=", "=", "!="):
-                        conditions.append(F.expr(f"`{col_name}` {operator} '{value}'"))
+                if rules:
 
-                if conditions:
-                    combined = conditions[0]
-                    for c in conditions[1:]:
-                        combined = combined & c if suppression_logic != "Or" else combined | c
+                    @udf(StringType())
+                    def decrypt_udf(val):
+                        if val is None:
+                            return None
+                        try:
+                            return decrypt(val)
+                        except:
+                            return None
 
-                    # 🔴 REMOVE MATCHING RECORDS
-                    df = df.filter(~combined)
+                    df_columns = set(df.columns)
+
+                    for rule in rules:
+                        if rule["is_encrypted"] and rule["column"] in df_columns:
+                            encrypted_columns.add(rule["column"])
+
+                    for col_name in encrypted_columns:
+                        df = df.withColumn(f"_dec_{col_name}", decrypt_udf(F.col(col_name)))
+
+                    supp_conditions = []
+
+                    for rule in rules:
+                        if rule["column"] not in df_columns:
+                            continue
+
+                        col_ref = f"_dec_{rule['column']}" if rule["is_encrypted"] else rule["column"]
+                        op = rule["operator"]
+                        val = rule["value"]
+
+                        if op == "in":
+                            vals = [v.strip() for v in val.split(";")]
+                            supp_conditions.append(~F.col(col_ref).isin(vals))
+                        elif op == "containsAny":
+                            import re as _re
+                            patterns = [_re.escape(v.strip()) for v in val.split(";")]
+                            regex = "|".join(patterns)
+                            supp_conditions.append(~F.col(col_ref).rlike(regex))
+                        elif op == "contains":
+                            supp_conditions.append(~F.col(col_ref).contains(val))
+                        elif op == "notContains":
+                            supp_conditions.append(F.col(col_ref).isNotNull() & F.col(col_ref).contains(val))
+                        elif op == "equals":
+                            supp_conditions.append(F.col(col_ref) != val)
+                        elif op == "notEquals":
+                            supp_conditions.append(F.col(col_ref) == val)
+                        elif op == "startsWith":
+                            supp_conditions.append(~F.col(col_ref).startswith(val))
+                        elif op == "isEmpty":
+                            supp_conditions.append(F.col(col_ref).isNotNull() & (F.col(col_ref) != ""))
+
+                    if supp_conditions:
+                        combined_supp = supp_conditions[0]
+                        for c in supp_conditions[1:]:
+                            combined_supp = combined_supp & c
+
+                        df_clean = df.filter(combined_supp)
+                        df_excluded = df.filter(~combined_supp)
+
+                        category_exprs = []
+
+                        for rule in rules:
+                            if rule["column"] not in df_columns:
+                                continue
+
+                            col_ref = f"_dec_{rule['column']}" if rule["is_encrypted"] else rule["column"]
+                            op = rule["operator"]
+                            val = rule["value"]
+                            cat = rule["category"]
+
+                            if op == "contains":
+                                match_cond = F.col(col_ref).contains(val)
+                            else:
+                                match_cond = F.col(col_ref) == val
+
+                            category_exprs.append(F.when(match_cond, F.lit(cat)))
+
+                        df_excluded = df_excluded.withColumn(
+                            "SuppressionCategory",
+                            F.concat_ws(";", *category_exprs)
+                        )
+
+                        for col_name in encrypted_columns:
+                            df_excluded = df_excluded.withColumn(col_name, F.col(f"_dec_{col_name}")).drop(f"_dec_{col_name}")
+
+                        df_supp_excluded = df_excluded
+                    else:
+                        df_clean = df
+
+                    for col_name in encrypted_columns:
+                        df_clean = df_clean.withColumn(col_name, F.col(f"_dec_{col_name}")).drop(f"_dec_{col_name}")
+
+                    df = df_clean
 
         except Exception as e:
             raise Exception(f"SUPPRESSION: {str(e)}")
+        
+
+
+        # ====================================================
+        # PHASE 4.6: WRITE EXCLUSION CSV
+        # ====================================================
+        try:
+            print("[PHASE 4.6] Writing exclusion CSV...")
+
+            excl_parts = []
+
+            if df_filter_excluded is not None and df_filter_excluded.count() > 0:
+                excl_parts.append(df_filter_excluded)
+
+            if df_supp_excluded is not None and df_supp_excluded.count() > 0:
+                excl_parts.append(df_supp_excluded)
+
+            if excl_parts:
+                from functools import reduce
+
+                df_all_excluded = reduce(
+                    lambda a, b: a.unionByName(b, allowMissingColumns=True),
+                    excl_parts
+                )
+
+                df_excl_output = df_all_excluded.select(
+                    F.lit(export_id).alias("ExportId"),
+                    F.lit(export_run_id).alias("ExportRunId"),
+                    *[F.col(c) for c in df_all_excluded.columns if c != "SuppressionCategory"],
+                    F.col("SuppressionCategory"),
+                    F.current_timestamp().alias("ExcludedAt")
+                )
+
+                timestamp_str_excl = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+                excl_filename = f"{export_name}_exclusions_{timestamp_str_excl}.csv"
+
+                base_url = f"abfss://audiences@segmentationexports.dfs.core.windows.net"
+
+                excl_temp = f"{base_url}/segment-exports/_temp/excl_{export_name}_{timestamp_str_excl}"
+
+                exclusion_blob_path = f"{base_url}/segment-exports/{target_source}/{target_identifier}/exclusions/{excl_filename}"
+
+                # Write temp
+                df_excl_output.coalesce(1).write \
+                    .option("header", "true") \
+                    .mode("overwrite") \
+                    .csv(excl_temp)
+
+                # Move part file
+                files = mssparkutils.fs.ls(excl_temp)
+                part_file = [f.path for f in files if "part-" in f.name][0]
+
+                mssparkutils.fs.mv(part_file, exclusion_blob_path, True)
+                mssparkutils.fs.rm(excl_temp, True)
+
+                print(f"Exclusion file created: {exclusion_blob_path}")
+
+        except Exception as e:
+            raise Exception(f"EXCLUSION_WRITE: {str(e)}")
 
         # ====================================================
         # PHASE 5: COLUMN MAPPING
         # ====================================================
         try:
-            print("[PHASE 5] Column mapping...")
-
             mappings = safe_json(column_mappings)
             select_exprs = []
+            available_cols = set(df.columns)
 
             if mappings:
                 for m in mappings:
                     src = m.get("sourceColumn")
                     tgt = m.get("targetColumn")
-                    transform = m.get("transform", "None")
 
-                    if transform == "None":
+                    if not src or src not in available_cols:
+                        select_exprs.append(F.lit(None).cast("string").alias(tgt))
+                    else:
                         select_exprs.append(F.col(src).alias(tgt))
-                    elif transform == "Trim":
-                        select_exprs.append(F.trim(F.col(src)).alias(tgt))
-                    elif transform == "Upper":
-                        select_exprs.append(F.upper(F.col(src)).alias(tgt))
-                    elif transform == "Lower":
-                        select_exprs.append(F.lower(F.col(src)).alias(tgt))
-                    elif transform == "SHA256":
-                        select_exprs.append(F.sha2(F.col(src).cast("string"), 256).alias(tgt))
-                    elif transform == "MD5":
-                        select_exprs.append(F.md5(F.col(src).cast("string")).alias(tgt))
-                    elif transform.startswith("Format:"):
-                        fmt = transform.split(":", 1)[1]
-                        select_exprs.append(F.date_format(F.col(src), fmt).alias(tgt))
 
-            df_export = df.select(select_exprs) if select_exprs else df
+                df_export = df.select(select_exprs)
+            else:
+                df_export = df
 
         except Exception as e:
             raise Exception(f"COLUMN_MAPPING: {str(e)}")
@@ -180,17 +313,13 @@ def main():
         # PHASE 6: STATIC METADATA
         # ====================================================
         try:
-            print("[PHASE 6] Static metadata...")
-
             statics = safe_json(static_metadata)
-
             if statics:
                 for s in statics:
                     df_export = df_export.withColumn(
                         s.get("destinationColumn"),
                         F.lit(s.get("staticValue"))
                     )
-
         except Exception as e:
             raise Exception(f"STATIC_METADATA: {str(e)}")
 
@@ -198,36 +327,18 @@ def main():
         # PHASE 7: WRITE OUTPUT
         # ====================================================
         try:
-            print("[PHASE 7] Writing output...")
-
             timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
 
-            temp_blob_path = f"{target_source}/{target_identifier}/temp_{export_name}_{timestamp}"
-            temp_output_path = f"abfss://{CONTAINER_NAME}@{STORAGE_ACCOUNT}.dfs.core.windows.net/{temp_blob_path}"
+            temp_path = f"abfss://{CONTAINER_NAME}@{STORAGE_ACCOUNT}.dfs.core.windows.net/temp/{export_name}_{timestamp}"
+            final_path = f"abfss://{CONTAINER_NAME}@{STORAGE_ACCOUNT}.dfs.core.windows.net/{target_source}/{target_identifier}/{export_name}_{timestamp}.csv"
 
-            final_blob_path = f"{target_source}/{target_identifier}/{export_name}_{timestamp}.csv"
-            final_output_path = f"abfss://{CONTAINER_NAME}@{STORAGE_ACCOUNT}.dfs.core.windows.net/{final_blob_path}"
+            df_export.coalesce(1).write.option("header", "true").mode("overwrite").csv(temp_path)
 
-            df_export.coalesce(1).write \
-                .option("header", "true") \
-                .mode("overwrite") \
-                .csv(temp_output_path)
+            files = mssparkutils.fs.ls(temp_path)
+            part_file = [f.path for f in files if "part-" in f.name][0]
 
-            files = mssparkutils.fs.ls(temp_output_path)
-            part_files = [f.path for f in files if "part-" in f.name]
-
-            if not part_files:
-                raise Exception("No part file found in temp folder")
-
-            part_file = part_files[0]
-
-            mssparkutils.fs.mv(part_file, final_output_path, True)
-            mssparkutils.fs.rm(temp_output_path, True)
-
-            output_path = final_output_path
-            blob_path = final_blob_path
-
-            print(f"Final file created: {output_path}")
+            mssparkutils.fs.mv(part_file, final_path, True)
+            mssparkutils.fs.rm(temp_path, True)
 
         except Exception as e:
             raise Exception(f"WRITE_OUTPUT: {str(e)}")
@@ -237,32 +348,25 @@ def main():
         # ====================================================
         try:
             file_size = 0
-
             try:
-                file_info = mssparkutils.fs.ls(output_path)
-                file_size = file_info[0].size
+                file_info = mssparkutils.fs.ls(final_path)
+                if file_info:
+                    file_size = file_info[0].size
             except Exception as e:
                 print("File size fetch failed:", str(e))
 
-            result = {
+            return {
                 "IsSuccess": 1,
                 "total_records": df_export.count(),
                 "file_size_bytes": file_size,
-                "blob_path": blob_path
+                "blob_path": final_path
             }
-
-            print("Export Completed")
-
-            return result
 
         except Exception as e:
             raise Exception(f"FINAL_RESPONSE: {str(e)}")
 
     except Exception as e:
         print("MAIN FAILED")
-        print(str(e))
-        print(traceback.format_exc())
-
         return {
             "IsSuccess": 0,
             "error": str(e)
